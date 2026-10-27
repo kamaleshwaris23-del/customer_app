@@ -370,6 +370,14 @@ export function exportCustomersToCSV(): {
     'Location',
     'Interests',
     'Notes',
+    'Business Name',
+    'Business Category',
+    'Business Services',
+    'Business Location',
+    'Business Idea',
+    'Training Required',
+    'Mentorship Required',
+    'Business Expansion',
     'Created At',
     'Last Updated',
   ];
@@ -386,6 +394,14 @@ export function exportCustomersToCSV(): {
     escapeCSVValue(c.location || ''),
     escapeCSVValue(c.interests || ''),
     escapeCSVValue(c.notes || ''),
+    escapeCSVValue(c.businessName || ''),
+    escapeCSVValue(c.businessCategory || ''),
+    escapeCSVValue(c.businessServices || ''),
+    escapeCSVValue(c.businessLocation || ''),
+    escapeCSVValue(c.businessIdea || ''),
+    escapeCSVValue(c.trainingRequired ? 'Yes' : 'No'),
+    escapeCSVValue(c.mentorshipRequired ? 'Yes' : 'No'),
+    escapeCSVValue(c.businessExpansion ? 'Yes' : 'No'),
     escapeCSVValue(c.createdAt),
     escapeCSVValue(c.updatedAt),
   ]);
@@ -493,8 +509,10 @@ export function parseCSV(text: string): Record<string, string>[] {
   const headerMap: Record<number, string> = {};
 
   headerRow.forEach((h, idx) => {
-    if (h.includes('id')) {
+    if (h.includes('id') && !h.includes('idea')) {
       headerMap[idx] = 'id';
+    } else if (h.includes('business name') || h.includes('company') || h.includes('enterprise')) {
+      headerMap[idx] = 'businessName';
     } else if (h.includes('full') || h.includes('name')) {
       headerMap[idx] = 'fullName';
     } else if (h === 'age') {
@@ -507,10 +525,24 @@ export function parseCSV(text: string): Record<string, string>[] {
       headerMap[idx] = 'email';
     } else if (h.includes('occupation') || h.includes('job') || h.includes('profession')) {
       headerMap[idx] = 'occupation';
+    } else if (h.includes('business category') || h.includes('industry')) {
+      headerMap[idx] = 'businessCategory';
     } else if (h.includes('category')) {
       headerMap[idx] = 'category';
+    } else if (h.includes('business location')) {
+      headerMap[idx] = 'businessLocation';
     } else if (h.includes('location') || h.includes('address')) {
       headerMap[idx] = 'location';
+    } else if (h.includes('services') || h.includes('products')) {
+      headerMap[idx] = 'businessServices';
+    } else if (h.includes('business idea') || h.includes('expansion idea')) {
+      headerMap[idx] = 'businessIdea';
+    } else if (h.includes('training')) {
+      headerMap[idx] = 'trainingRequired';
+    } else if (h.includes('mentorship')) {
+      headerMap[idx] = 'mentorshipRequired';
+    } else if (h.includes('expansion')) {
+      headerMap[idx] = 'businessExpansion';
     } else if (h.includes('interest')) {
       headerMap[idx] = 'interests';
     } else if (h.includes('note')) {
@@ -590,12 +622,15 @@ export function validateCustomerCSVImport(
 
 const VALID_CATEGORIES: import('../types/customer').CustomerCategory[] = [
   'Business Owner',
+  'Aspiring Entrepreneur',
   'Entrepreneur',
   'Student',
+  'Working Professional',
   'Professional',
   'Self-employed',
   'Investor',
   'General Customer',
+  'Other',
 ];
 
 export function getValidCategories(): string[] {
@@ -802,6 +837,27 @@ export function validateCustomerImport(
       category: rec.category as import('../types/customer').CustomerCategory,
       interests: typeof rec.interests === 'string' && rec.interests.trim() ? rec.interests.trim() : undefined,
       notes: typeof rec.notes === 'string' && rec.notes.trim() ? rec.notes.trim() : undefined,
+      businessName: typeof rec.businessName === 'string' && rec.businessName.trim() ? rec.businessName.trim() : undefined,
+      businessCategory: typeof rec.businessCategory === 'string' && rec.businessCategory.trim() ? rec.businessCategory.trim() : undefined,
+      businessServices: typeof rec.businessServices === 'string' && rec.businessServices.trim() ? rec.businessServices.trim() : undefined,
+      businessLocation: typeof rec.businessLocation === 'string' && rec.businessLocation.trim() ? rec.businessLocation.trim() : undefined,
+      businessIdea: typeof rec.businessIdea === 'string' && rec.businessIdea.trim() ? rec.businessIdea.trim() : undefined,
+      trainingRequired:
+        typeof rec.trainingRequired === 'boolean'
+          ? rec.trainingRequired
+          : rec.trainingRequired === 'true' || rec.trainingRequired === 'Yes',
+      mentorshipRequired:
+        typeof rec.mentorshipRequired === 'boolean'
+          ? rec.mentorshipRequired
+          : rec.mentorshipRequired === 'true' || rec.mentorshipRequired === 'Yes',
+      businessExpansion:
+        typeof rec.businessExpansion === 'boolean'
+          ? rec.businessExpansion
+          : rec.businessExpansion === 'true' || rec.businessExpansion === 'Yes',
+      customFields:
+        rec.customFields && typeof rec.customFields === 'object'
+          ? (rec.customFields as Record<string, string>)
+          : undefined,
       createdAt: typeof rec.createdAt === 'string' && rec.createdAt ? rec.createdAt : now,
       updatedAt: typeof rec.updatedAt === 'string' && rec.updatedAt ? rec.updatedAt : now,
     };

@@ -38,12 +38,15 @@ import { useDemoRole } from '../services/roleStorage';
 
 const CATEGORY_LIST: CustomerCategory[] = [
   'Business Owner',
+  'Aspiring Entrepreneur',
   'Entrepreneur',
   'Student',
+  'Working Professional',
   'Professional',
   'Self-employed',
   'Investor',
   'General Customer',
+  'Other',
 ];
 
 const GENDER_LIST: Gender[] = ['Female', 'Male', 'Prefer not to say'];
@@ -55,16 +58,19 @@ type SortDirection = 'asc' | 'desc';
 const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
   switch (category) {
     case 'Business Owner':
+    case 'Aspiring Entrepreneur':
     case 'Entrepreneur':
       return 'primary';
     case 'Investor':
       return 'success';
+    case 'Working Professional':
     case 'Professional':
     case 'Self-employed':
       return 'info';
     case 'Student':
       return 'warning';
     case 'General Customer':
+    case 'Other':
     default:
       return 'neutral';
   }
@@ -472,6 +478,11 @@ export const CustomersPage: React.FC = () => {
                         >
                           {customer.fullName}
                         </div>
+                        {customer.businessName && (
+                          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '2px' }}>
+                            <span style={{ color: 'var(--primary)', fontWeight: 600 }}>•</span> {customer.businessName}
+                          </div>
+                        )}
                       </td>
 
                       {/* Customer ID */}
@@ -518,11 +529,30 @@ export const CustomersPage: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Category Badge */}
+                      {/* Category Badge & Program Tags */}
                       <td>
                         <Badge variant={getCategoryBadgeVariant(customer.category)}>
                           {customer.category}
                         </Badge>
+                        {(customer.trainingRequired || customer.mentorshipRequired || customer.businessExpansion) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
+                            {customer.trainingRequired && (
+                              <span title="Training Required" style={{ fontSize: '0.68rem', padding: '1px 4px', background: '#fef3c7', color: '#92400e', borderRadius: '3px', fontWeight: 600 }}>
+                                Training
+                              </span>
+                            )}
+                            {customer.mentorshipRequired && (
+                              <span title="Mentorship Requested" style={{ fontSize: '0.68rem', padding: '1px 4px', background: '#dbeafe', color: '#1e40af', borderRadius: '3px', fontWeight: 600 }}>
+                                Mentor
+                              </span>
+                            )}
+                            {customer.businessExpansion && (
+                              <span title="Expansion Plan" style={{ fontSize: '0.68rem', padding: '1px 4px', background: '#d1fae5', color: '#065f46', borderRadius: '3px', fontWeight: 600 }}>
+                                Scaling
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Location */}

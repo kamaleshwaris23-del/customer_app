@@ -228,7 +228,7 @@ export const WelcomePage: React.FC = () => {
               100% Local Storage
             </h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              All records survive browser refresh. Zero external server, cloud database, or auth credentials required.
+              Data is stored securely in this browser's LocalStorage and is device-specific. Use the Backup & Restore or Import/Export hub to easily transfer records across machines.
             </p>
           </CardContent>
         </Card>

@@ -774,7 +774,10 @@ describe('Door2Life Customer Management Automated Tests', () => {
 
       const lines = exportResult.csvString.split('\r\n');
       assert.ok(lines.length >= 2);
-      assert.equal(lines[0], 'Customer ID,Full Name,Age,Gender,Primary Contact,Email,Occupation,Category,Location,Interests,Notes,Created At,Last Updated');
+      assert.equal(
+        lines[0],
+        'Customer ID,Full Name,Age,Gender,Primary Contact,Email,Occupation,Category,Location,Interests,Notes,Business Name,Business Category,Business Services,Business Location,Business Idea,Training Required,Mentorship Required,Business Expansion,Created At,Last Updated'
+      );
 
       // Verify quoted fields containing commas and quotes
       assert.ok(lines[1].includes('"Dr. John Watson, M.D."'));
@@ -1211,6 +1214,123 @@ describe('Door2Life Customer Management Automated Tests', () => {
 
       setStoredRole('Admin');
       assert.equal(getStoredRole(), 'Admin');
+    });
+  });
+
+  describe('14. Conditional Business Details, Support Preferences, and Expanded Categories', () => {
+    it('saves and retrieves customer with enterprise details and support program flags', () => {
+      const added = addCustomer({
+        fullName: 'Vikram Solar Solutions',
+        age: 38,
+        gender: 'Male',
+        primaryContact: '9845012345',
+        occupation: 'Founder & CEO',
+        category: 'Business Owner',
+        businessName: 'SunTech Renewable Systems',
+        businessCategory: 'CleanTech & Energy',
+        businessServices: 'Rooftop solar installation and battery storage',
+        businessLocation: 'Coimbatore, TN',
+        businessIdea: 'Scale decentralized solar microgrids across tier-2 cities',
+        trainingRequired: true,
+        mentorshipRequired: true,
+        businessExpansion: true,
+        interests: 'Renewable energy, Carbon credits',
+        notes: 'Requested venture mentor for upcoming series funding',
+      });
+
+      assert.equal(added.success, true);
+      assert.ok(added.customer);
+      assert.equal(added.customer.businessName, 'SunTech Renewable Systems');
+      assert.equal(added.customer.businessCategory, 'CleanTech & Energy');
+      assert.equal(added.customer.businessServices, 'Rooftop solar installation and battery storage');
+      assert.equal(added.customer.trainingRequired, true);
+      assert.equal(added.customer.mentorshipRequired, true);
+      assert.equal(added.customer.businessExpansion, true);
+
+      // Verify retrieval from storage
+      const retrieved = getStoredCustomerById(added.customer.id);
+      assert.ok(retrieved);
+      assert.equal(retrieved.businessName, 'SunTech Renewable Systems');
+      assert.equal(retrieved.businessLocation, 'Coimbatore, TN');
+      assert.equal(retrieved.trainingRequired, true);
+      assert.equal(retrieved.mentorshipRequired, true);
+      assert.equal(retrieved.businessExpansion, true);
+    });
+
+    it('supports new categories such as Aspiring Entrepreneur and Working Professional', () => {
+      const aspiring = addCustomer({
+        fullName: 'Ananya Sharma',
+        age: 26,
+        gender: 'Female',
+        primaryContact: '9789012345',
+        occupation: 'Software Engineer',
+        category: 'Aspiring Entrepreneur',
+        businessName: 'FinFlow AI',
+        businessCategory: 'Technology & SaaS',
+        businessIdea: 'AI-assisted invoicing for freelance consultants',
+        trainingRequired: true,
+        mentorshipRequired: false,
+        businessExpansion: false,
+      });
+
+      assert.equal(aspiring.success, true);
+      assert.equal(aspiring.customer?.category, 'Aspiring Entrepreneur');
+
+      const workingProf = addCustomer({
+        fullName: 'Karthik Raja',
+        age: 32,
+        gender: 'Male',
+        primaryContact: '9655012345',
+        occupation: 'Finance Manager',
+        category: 'Working Professional',
+      });
+
+      assert.equal(workingProf.success, true);
+      assert.equal(workingProf.customer?.category, 'Working Professional');
+    });
+
+    it('exports and validates CSV with enterprise details and support preferences', () => {
+      addCustomer({
+        fullName: 'Deepak Enterprise',
+        age: 42,
+        gender: 'Male',
+        primaryContact: '9123456780',
+        occupation: 'Managing Director',
+        category: 'Business Owner',
+        businessName: 'Deepak Tooling Ltd',
+        businessCategory: 'Manufacturing & Engineering',
+        businessServices: 'Precision CNC parts',
+        businessLocation: 'Chennai, TN',
+        businessIdea: 'Expansion into automotive export tooling',
+        trainingRequired: false,
+        mentorshipRequired: true,
+        businessExpansion: true,
+      });
+
+      const exportResult = exportCustomersToCSV();
+      assert.equal(exportResult.success, true);
+      const csv = exportResult.csvString;
+      assert.ok(csv.includes('Business Name'));
+      assert.ok(csv.includes('Deepak Tooling Ltd'));
+      assert.ok(csv.includes('Training Required'));
+      assert.ok(csv.includes('Mentorship Required'));
+      assert.ok(csv.includes('Business Expansion'));
+
+      // Parse CSV rows
+      const parsedRows = parseCSV(csv);
+      assert.ok(parsedRows.length >= 1);
+
+      // Validate import preview
+      const importVal = validateCustomerImport(parsedRows);
+      assert.equal(importVal.isValid, true);
+      assert.ok(importVal.validRecords.length >= 1);
+
+      const importedCust = importVal.validRecords.find((c) => c.fullName === 'Deepak Enterprise');
+      assert.ok(importedCust);
+      assert.equal(importedCust.businessName, 'Deepak Tooling Ltd');
+      assert.equal(importedCust.mentorshipRequired, true);
+      assert.equal(importedCust.businessExpansion, true);
+      assert.equal(importedCust.trainingRequired, false);
     });
   });
 });

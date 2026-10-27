@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Trash2,
   Briefcase,
+  Building2,
   X,
 } from 'lucide-react';
 import { PageHeader } from '../components/common/PageHeader';
@@ -38,16 +39,19 @@ import type { CustomerCategory } from '../types/customer';
 const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
   switch (category) {
     case 'Business Owner':
+    case 'Aspiring Entrepreneur':
     case 'Entrepreneur':
       return 'primary';
     case 'Investor':
       return 'success';
+    case 'Working Professional':
     case 'Professional':
     case 'Self-employed':
       return 'info';
     case 'Student':
       return 'warning';
     case 'General Customer':
+    case 'Other':
     default:
       return 'neutral';
   }
@@ -330,28 +334,127 @@ export const CustomerProfilePage: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* Conditional Business & Enterprise Details */}
+          {(customer.businessName || customer.businessCategory || customer.businessServices || customer.businessLocation || customer.businessIdea) && (
+            <Card>
+              <CardHeader
+                title="Business & Enterprise Profile"
+                subtitle="Commercial venture, category, and enterprise scope"
+                action={<Badge variant="primary">Enterprise</Badge>}
+              />
+              <CardContent>
+                <div className="detail-grid">
+                  {customer.businessName && (
+                    <div className="detail-item">
+                      <span className="detail-label">Business / Venture Name</span>
+                      <span className="detail-value" style={{ fontWeight: 700, color: 'var(--text-navy)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Building2 size={15} color="var(--primary)" />
+                        {customer.businessName}
+                      </span>
+                    </div>
+                  )}
+
+                  {customer.businessCategory && (
+                    <div className="detail-item">
+                      <span className="detail-label">Industry / Sector</span>
+                      <span className="detail-value">
+                        {customer.businessCategory}
+                      </span>
+                    </div>
+                  )}
+
+                  {customer.businessLocation && (
+                    <div className="detail-item">
+                      <span className="detail-label">Business Location</span>
+                      <span className="detail-value">
+                        {customer.businessLocation}
+                      </span>
+                    </div>
+                  )}
+
+                  {customer.businessServices && (
+                    <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                      <span className="detail-label">Products & Services Offered</span>
+                      <span className="detail-value">
+                        {customer.businessServices}
+                      </span>
+                    </div>
+                  )}
+
+                  {customer.businessIdea && (
+                    <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                      <span className="detail-label">Business Concept / Growth Vision</span>
+                      <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        {customer.businessIdea}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Intake Notes & Preferences */}
-          {(customer.interests || customer.notes) && (
+          {(customer.interests || customer.notes || customer.trainingRequired || customer.mentorshipRequired || customer.businessExpansion) && (
             <Card>
               <CardHeader
                 title="Service Preferences & Field Notes"
-                subtitle="Captured observations and intake context"
+                subtitle="Captured observations, intake context, and support requests"
               />
               <CardContent>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Structured Support Programs */}
+                  {(customer.trainingRequired || customer.mentorshipRequired || customer.businessExpansion) && (
+                    <div>
+                      <span className="detail-label" style={{ marginBottom: '0.4rem', display: 'block' }}>Requested Support Programs</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        {customer.trainingRequired && (
+                          <Badge variant="warning">
+                            Skill & Entrepreneurship Training
+                          </Badge>
+                        )}
+                        {customer.mentorshipRequired && (
+                          <Badge variant="info">
+                            1-on-1 Mentorship & Advisory
+                          </Badge>
+                        )}
+                        {customer.businessExpansion && (
+                          <Badge variant="success">
+                            Business Expansion & Scaling
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {customer.interests && (
                     <div>
-                      <span className="detail-label">Service Interests</span>
-                      <p style={{ fontSize: '0.92rem', color: 'var(--text-navy)', marginTop: '0.25rem' }}>
-                        {customer.interests}
-                      </p>
+                      <span className="detail-label">Service Interests & Domains</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.35rem' }}>
+                        {customer.interests.split(',').map((tag) => tag.trim()).filter(Boolean).map((tag, idx) => (
+                          <span
+                            key={idx}
+                            style={{
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              color: 'var(--primary)',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {customer.notes && (
                     <div>
                       <span className="detail-label">Intake Field Notes</span>
-                      <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.25rem', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                         {customer.notes}
                       </p>
                     </div>

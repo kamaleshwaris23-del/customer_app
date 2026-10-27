@@ -10,6 +10,8 @@ import {
   FileSpreadsheet,
   Phone,
   Mail,
+  PieChart,
+  Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
@@ -22,16 +24,19 @@ import type { CustomerCategory } from '../types/customer';
 const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
   switch (category) {
     case 'Business Owner':
+    case 'Aspiring Entrepreneur':
     case 'Entrepreneur':
       return 'primary';
     case 'Investor':
       return 'success';
+    case 'Working Professional':
     case 'Professional':
     case 'Self-employed':
       return 'info';
     case 'Student':
       return 'warning';
     case 'General Customer':
+    case 'Other':
     default:
       return 'neutral';
   }
@@ -68,6 +73,35 @@ export const DashboardPage: React.FC = () => {
       .filter((f) => f.status !== 'Completed')
       .slice(0, 4);
   }, [followUps]);
+
+  // Real-time category breakdown
+  const categoryStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    customers.forEach((c) => {
+      const cat = c.category || 'General Customer';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([cat, count]) => ({
+        category: cat as CustomerCategory,
+        count,
+        percentage: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [customers, totalCount]);
+
+  // Real-time requested support programs
+  const supportStats = useMemo(() => {
+    let training = 0;
+    let mentorship = 0;
+    let expansion = 0;
+    customers.forEach((c) => {
+      if (c.trainingRequired) training++;
+      if (c.mentorshipRequired) mentorship++;
+      if (c.businessExpansion) expansion++;
+    });
+    return { training, mentorship, expansion };
+  }, [customers]);
 
   const formatRelativeTime = (isoString?: string) => {
     if (!isoString) return 'Just now';
@@ -392,6 +426,141 @@ export const DashboardPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Category Breakdown & Support Insights */}
+      {totalCount > 0 && (
+        <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+          {/* Customer Category Segmentation */}
+          <Card>
+            <CardHeader
+              title="Customer Category Distribution"
+              subtitle="Breakdown of customer portfolio across registered categories"
+              action={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <PieChart size={15} />
+                  <span>{categoryStats.length} Categories</span>
+                </div>
+              }
+            />
+            <CardContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                {categoryStats.map(({ category, count, percentage }) => (
+                  <div key={category}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Badge variant={getCategoryBadgeVariant(category)}>{category}</Badge>
+                      </div>
+                      <span style={{ fontWeight: 600, color: 'var(--text-navy)' }}>
+                        {count} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>({percentage}%)</span>
+                      </span>
+                    </div>
+                    <div style={{ height: '6px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          height: '100%',
+                          width: `${percentage}%`,
+                          backgroundColor: 'var(--primary)',
+                          borderRadius: '3px',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Special Support & Venture Programs */}
+          <Card>
+            <CardHeader
+              title="Requested Support Programs"
+              subtitle="Customer interest in training, mentorship, and business scaling"
+              action={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <Sparkles size={15} />
+                  <span>Program Insights</span>
+                </div>
+              }
+            />
+            <CardContent>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#fffbeb',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid #fef3c7',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#92400e', fontSize: '0.88rem' }}>
+                      Skill & Entrepreneurship Training
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#b45309' }}>
+                      Customers seeking formal capacity building
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#b45309' }}>
+                    {supportStats.training}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#eff6ff',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid #dbeafe',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e40af', fontSize: '0.88rem' }}>
+                      1-on-1 Mentorship & Advisory
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#2563eb' }}>
+                      Customers requesting strategic guidance
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e40af' }}>
+                    {supportStats.mentorship}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.75rem 1rem',
+                    backgroundColor: '#ecfdf5',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid #d1fae5',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#065f46', fontSize: '0.88rem' }}>
+                      Business Expansion & Scaling
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#047857' }}>
+                      Enterprises planning market expansion
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065f46' }}>
+                    {supportStats.expansion}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

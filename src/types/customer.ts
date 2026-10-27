@@ -2,12 +2,15 @@ export type Gender = 'Female' | 'Male' | 'Prefer not to say';
 
 export type CustomerCategory =
   | 'Business Owner'
+  | 'Aspiring Entrepreneur'
   | 'Entrepreneur'
   | 'Student'
+  | 'Working Professional'
   | 'Professional'
   | 'Self-employed'
   | 'Investor'
   | 'General Customer'
+  | 'Other'
   | (string & {});
 
 export interface Customer {
@@ -27,6 +30,18 @@ export interface Customer {
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+
+  // Conditional Business & Enterprise Details
+  businessName?: string;
+  businessCategory?: string;
+  businessServices?: string;
+  businessLocation?: string;
+  businessIdea?: string;
+
+  // Structured Interests & Preferences
+  trainingRequired?: boolean;
+  mentorshipRequired?: boolean;
+  businessExpansion?: boolean;
 }
 
 export interface CustomerFormData {
@@ -40,6 +55,18 @@ export interface CustomerFormData {
   category: CustomerCategory | '';
   interests: string;
   notes: string;
+
+  // Conditional Business Details
+  businessName: string;
+  businessCategory: string;
+  businessServices: string;
+  businessLocation: string;
+  businessIdea: string;
+
+  // Structured Preferences
+  trainingRequired: boolean;
+  mentorshipRequired: boolean;
+  businessExpansion: boolean;
 }
 
 export interface CustomerFormErrors {
@@ -53,6 +80,8 @@ export interface CustomerFormErrors {
   category?: string;
   interests?: string;
   notes?: string;
+  businessName?: string;
+  businessCategory?: string;
   general?: string;
 }
 

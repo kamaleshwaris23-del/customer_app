@@ -7,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle2,
   UserCheck,
-  Calendar,
   Clock,
   Phone,
   Mail,
@@ -16,6 +15,8 @@ import {
   User,
   Briefcase,
   FileCheck2,
+  Building2,
+  Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardContent, CardFooter } from '../components/common/Card';
@@ -39,12 +40,57 @@ import { useTeamMembers } from '../services/teamStorage';
 
 const CATEGORY_OPTIONS: CustomerCategory[] = [
   'Business Owner',
+  'Aspiring Entrepreneur',
   'Entrepreneur',
   'Student',
+  'Working Professional',
   'Professional',
   'Self-employed',
   'Investor',
   'General Customer',
+  'Other',
+];
+
+const isBusinessCategory = (category: string): boolean => {
+  return [
+    'Business Owner',
+    'Aspiring Entrepreneur',
+    'Entrepreneur',
+    'Self-employed',
+    'Investor',
+  ].includes(category);
+};
+
+const BUSINESS_INDUSTRIES = [
+  'Retail & Grocery',
+  'Wholesale & Distribution',
+  'Manufacturing & Production',
+  'Technology & Software',
+  'Agriculture & Agri-Business',
+  'Food & Beverages / Restaurant',
+  'Healthcare & Pharmacy',
+  'Education & Training',
+  'Textiles & Garments',
+  'Construction & Real Estate',
+  'Logistics & Transportation',
+  'Financial Services & Advisory',
+  'Automobile & Garage',
+  'Handicrafts & Artisans',
+  'Professional Services & Consulting',
+  'Other',
+];
+
+const STANDARD_INTERESTS = [
+  'Financial Planning',
+  'Business Expansion',
+  'Skill Training',
+  'Marketing & Branding',
+  'Digital Tools & Tech',
+  'Funding & Grants',
+  'Tax & Compliance',
+  'Retirement Planning',
+  'Life Insurance',
+  'Networking & Trade',
 ];
 
 const GENDER_OPTIONS: Gender[] = ['Female', 'Male', 'Prefer not to say'];
@@ -83,6 +129,14 @@ export const AddCustomerPage: React.FC = () => {
         category: existingCustomer.category,
         interests: existingCustomer.interests || '',
         notes: existingCustomer.notes || '',
+        businessName: existingCustomer.businessName || '',
+        businessCategory: existingCustomer.businessCategory || '',
+        businessServices: existingCustomer.businessServices || '',
+        businessLocation: existingCustomer.businessLocation || '',
+        businessIdea: existingCustomer.businessIdea || '',
+        trainingRequired: Boolean(existingCustomer.trainingRequired),
+        mentorshipRequired: Boolean(existingCustomer.mentorshipRequired),
+        businessExpansion: Boolean(existingCustomer.businessExpansion),
       };
     }
     return {
@@ -96,6 +150,14 @@ export const AddCustomerPage: React.FC = () => {
       category: '',
       interests: '',
       notes: '',
+      businessName: '',
+      businessCategory: '',
+      businessServices: '',
+      businessLocation: '',
+      businessIdea: '',
+      trainingRequired: false,
+      mentorshipRequired: false,
+      businessExpansion: false,
     };
   });
 
@@ -106,6 +168,23 @@ export const AddCustomerPage: React.FC = () => {
 
   const handleCustomFieldChange = (fieldId: string, val: string) => {
     setCustomFieldValues((prev) => ({ ...prev, [fieldId]: val }));
+  };
+
+  const toggleInterestTag = (tag: string) => {
+    const currentList = formData.interests
+      ? formData.interests.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    let updatedList: string[];
+    if (currentList.includes(tag)) {
+      updatedList = currentList.filter((item) => item !== tag);
+    } else {
+      updatedList = [...currentList, tag];
+    }
+    setFormData((prev) => ({ ...prev, interests: updatedList.join(', ') }));
+  };
+
+  const togglePreference = (key: 'trainingRequired' | 'mentorshipRequired' | 'businessExpansion') => {
+    setFormData((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   // Step 3 Optional Follow-up Scheduling State
@@ -279,6 +358,14 @@ export const AddCustomerPage: React.FC = () => {
       category: formData.category as CustomerCategory,
       interests: formData.interests.trim() || undefined,
       notes: formData.notes.trim() || undefined,
+      businessName: formData.businessName.trim() || undefined,
+      businessCategory: formData.businessCategory.trim() || undefined,
+      businessServices: formData.businessServices.trim() || undefined,
+      businessLocation: formData.businessLocation.trim() || undefined,
+      businessIdea: formData.businessIdea.trim() || undefined,
+      trainingRequired: formData.trainingRequired || undefined,
+      mentorshipRequired: formData.mentorshipRequired || undefined,
+      businessExpansion: formData.businessExpansion || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
     };
 
@@ -378,8 +465,8 @@ export const AddCustomerPage: React.FC = () => {
 
   const stepsMeta = [
     { number: 1, title: 'Personal & Contact', icon: <User size={16} /> },
-    { number: 2, title: 'Category & Background', icon: <Briefcase size={16} /> },
-    { number: 3, title: 'Follow-up Scheduling', icon: <Calendar size={16} /> },
+    { number: 2, title: 'Category & Business', icon: <Briefcase size={16} /> },
+    { number: 3, title: 'Interests & Preferences', icon: <Sparkles size={16} /> },
     { number: 4, title: 'Review & Confirm', icon: <FileCheck2 size={16} /> },
   ];
 
@@ -666,13 +753,13 @@ export const AddCustomerPage: React.FC = () => {
         )}
 
         {/* ===================================================================
-            STEP 2: CATEGORY, INTERESTS & NOTES
+            STEP 2: CATEGORY & CONDITIONAL BUSINESS DETAILS
            =================================================================== */}
         {currentStep === 2 && (
           <Card>
             <CardHeader
-              title="Step 2: Category & Background Details"
-              subtitle="Assign customer classification, service interests, and intake observations"
+              title="Step 2: Category & Enterprise Details"
+              subtitle="Assign customer category classification and conditional business profile"
             />
             <CardContent>
               <div className="form-grid">
@@ -702,35 +789,126 @@ export const AddCustomerPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="form-group full-width">
-                  <label className="form-label" htmlFor="interests">
-                    Interests / Service Preferences <span style={{ color: 'var(--text-muted)' }}>(Optional)</span>
-                  </label>
-                  <input
-                    id="interests"
-                    name="interests"
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Life Insurance, Term Plan, Retirement Corpus"
-                    value={formData.interests}
-                    onChange={handleChange}
-                  />
-                </div>
+                {/* Conditional Business / Enterprise Details */}
+                {isBusinessCategory(formData.category) ? (
+                  <div
+                    className="form-group full-width"
+                    style={{
+                      marginTop: '0.5rem',
+                      padding: '1.25rem',
+                      backgroundColor: '#f8fafc',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1.5px solid #bfdbfe',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                      <Building2 size={18} color="var(--primary)" />
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-navy)', margin: 0 }}>
+                        Enterprise & Business Information
+                      </h4>
+                      <Badge variant="primary">Conditional: {formData.category}</Badge>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                      Capture specific enterprise data, products/services, and expansion ideas for business profiles.
+                    </p>
 
-                <div className="form-group full-width">
-                  <label className="form-label" htmlFor="notes">
-                    Field Notes & Observations <span style={{ color: 'var(--text-muted)' }}>(Optional)</span>
-                  </label>
-                  <textarea
-                    id="notes"
-                    name="notes"
-                    rows={4}
-                    className="form-textarea"
-                    placeholder="Enter any relevant background, customer requests, or intake meeting notes..."
-                    value={formData.notes}
-                    onChange={handleChange}
-                  />
-                </div>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="businessName">
+                          Business / Enterprise Name
+                        </label>
+                        <input
+                          id="businessName"
+                          name="businessName"
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Sri Murugan Textiles or Apex Technologies"
+                          value={formData.businessName}
+                          onChange={handleChange}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="businessCategory">
+                          Business Category / Industry
+                        </label>
+                        <select
+                          id="businessCategory"
+                          name="businessCategory"
+                          className="form-select"
+                          value={formData.businessCategory}
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Industry</option>
+                          {BUSINESS_INDUSTRIES.map((ind) => (
+                            <option key={ind} value={ind}>
+                              {ind}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group full-width">
+                        <label className="form-label" htmlFor="businessServices">
+                          Products & Services Offered
+                        </label>
+                        <input
+                          id="businessServices"
+                          name="businessServices"
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Cotton fabrics, wholesale distribution, online e-commerce"
+                          value={formData.businessServices}
+                          onChange={handleChange}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="businessLocation">
+                          Business Location / District
+                        </label>
+                        <input
+                          id="businessLocation"
+                          name="businessLocation"
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Coimbatore, Tamil Nadu"
+                          value={formData.businessLocation}
+                          onChange={handleChange}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="businessIdea">
+                          Business Idea / Expansion Goals
+                        </label>
+                        <input
+                          id="businessIdea"
+                          name="businessIdea"
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Opening retail branch, export scaling"
+                          value={formData.businessIdea}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : formData.category ? (
+                  <div
+                    className="form-group full-width"
+                    style={{
+                      padding: '0.85rem 1rem',
+                      backgroundColor: '#f8fafc',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px dashed var(--border-medium)',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      Selected profile category (<strong>{formData.category}</strong>) does not require mandatory enterprise details.
+                    </span>
+                  </div>
+                ) : null}
 
                 {settings.customFields && settings.customFields.length > 0 && (
                   <div
@@ -804,7 +982,7 @@ export const AddCustomerPage: React.FC = () => {
                   iconPosition="right"
                   onClick={handleNext}
                 >
-                  Next: Follow-up Scheduling
+                  Next: Interests & Preferences
                 </Button>
               </div>
             </CardFooter>
@@ -812,17 +990,175 @@ export const AddCustomerPage: React.FC = () => {
         )}
 
         {/* ===================================================================
-            STEP 3: OPTIONAL FOLLOW-UP SCHEDULING
+            STEP 3: INTERESTS, PREFERENCES & FOLLOW-UP SCHEDULING
            =================================================================== */}
         {currentStep === 3 && (
           <Card>
             <CardHeader
-              title="Step 3: Initial Follow-up Scheduling"
-              subtitle="Optionally schedule a touchpoint reminder or onboarding task for this customer"
+              title="Step 3: Service Interests, Preferences & Follow-up"
+              subtitle="Select core interests, development preferences, field notes, and optional initial follow-up"
             />
             <CardContent>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Toggle option */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* 1. Selectable Interest Tags */}
+                <div>
+                  <label className="form-label" style={{ marginBottom: '0.5rem' }}>
+                    Select Core Interests & Preferences
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    {STANDARD_INTERESTS.map((tag) => {
+                      const isSelected = formData.interests
+                        .split(',')
+                        .map((s) => s.trim())
+                        .includes(tag);
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleInterestTag(tag)}
+                          style={{
+                            padding: '0.35rem 0.8rem',
+                            borderRadius: 'var(--radius-full)',
+                            fontSize: '0.8rem',
+                            fontWeight: isSelected ? 700 : 500,
+                            backgroundColor: isSelected ? 'var(--primary)' : '#f1f5f9',
+                            color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-subtle)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {isSelected ? `✓ ${tag}` : `+ ${tag}`}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <input
+                    id="interests"
+                    name="interests"
+                    type="text"
+                    className="form-input"
+                    placeholder="Custom interests or comma-separated tags..."
+                    value={formData.interests}
+                    onChange={handleChange}
+                  />
+                  <span className="form-helper">
+                    Click interest tags above to toggle or type custom tags.
+                  </span>
+                </div>
+
+                {/* 2. Structured Support Preferences */}
+                <div>
+                  <label className="form-label" style={{ marginBottom: '0.5rem' }}>
+                    Development & Support Preferences
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '0.85rem' }}>
+                    <div
+                      style={{
+                        padding: '0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: formData.trainingRequired ? '2px solid var(--primary)' : '1px solid var(--border-medium)',
+                        backgroundColor: formData.trainingRequired ? 'var(--primary-light)' : '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.65rem',
+                      }}
+                      onClick={() => togglePreference('trainingRequired')}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.trainingRequired}
+                        onChange={() => togglePreference('trainingRequired')}
+                        style={{ marginTop: '0.15rem', accentColor: 'var(--primary)', width: '16px', height: '16px' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-navy)' }}>
+                          Training Required
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          Customer requests skill building, financial literacy, or technical operational workshops.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: formData.mentorshipRequired ? '2px solid var(--primary)' : '1px solid var(--border-medium)',
+                        backgroundColor: formData.mentorshipRequired ? 'var(--primary-light)' : '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.65rem',
+                      }}
+                      onClick={() => togglePreference('mentorshipRequired')}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.mentorshipRequired}
+                        onChange={() => togglePreference('mentorshipRequired')}
+                        style={{ marginTop: '0.15rem', accentColor: 'var(--primary)', width: '16px', height: '16px' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-navy)' }}>
+                          Mentorship Required
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          Customer requests 1-on-1 advisor or mentor guidance for career or enterprise planning.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: '0.9rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: formData.businessExpansion ? '2px solid var(--primary)' : '1px solid var(--border-medium)',
+                        backgroundColor: formData.businessExpansion ? 'var(--primary-light)' : '#ffffff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '0.65rem',
+                      }}
+                      onClick={() => togglePreference('businessExpansion')}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.businessExpansion}
+                        onChange={() => togglePreference('businessExpansion')}
+                        style={{ marginTop: '0.15rem', accentColor: 'var(--primary)', width: '16px', height: '16px' }}
+                      />
+                      <div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-navy)' }}>
+                          Business Expansion
+                        </div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          Customer seeks expansion, branch scaling, new market access, or partnership support.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Field Notes & Observations */}
+                <div className="form-group full-width">
+                  <label className="form-label" htmlFor="notes">
+                    Field Notes & Observations <span style={{ color: 'var(--text-muted)' }}>(Optional)</span>
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={3}
+                    className="form-textarea"
+                    placeholder="Enter any relevant background, customer requests, or intake meeting notes..."
+                    value={formData.notes}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                {/* 4. Follow-up scheduling section */}
                 <div
                   style={{
                     padding: '1.25rem',
@@ -975,7 +1311,7 @@ export const AddCustomerPage: React.FC = () => {
             </CardContent>
             <CardFooter style={{ justifyContent: 'space-between' }}>
               <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={handleBack}>
-                Back: Category Details
+                Back: Category & Business
               </Button>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleCancel}>
@@ -1057,7 +1393,7 @@ export const AddCustomerPage: React.FC = () => {
                   {/* Summary Box 2: Category & Background */}
                   <div className="detail-box">
                     <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
-                      Category & Background
+                      Category & Support Preferences
                     </h4>
                     <div className="detail-grid">
                       <div className="detail-item">
@@ -1070,6 +1406,16 @@ export const AddCustomerPage: React.FC = () => {
                           <Badge variant="primary">{formData.category}</Badge>
                         </span>
                       </div>
+                      {(formData.trainingRequired || formData.mentorshipRequired || formData.businessExpansion) && (
+                        <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                          <span className="detail-label">Requested Support Programs</span>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
+                            {formData.trainingRequired && <Badge variant="primary">Training Required</Badge>}
+                            {formData.mentorshipRequired && <Badge variant="success">Mentorship Required</Badge>}
+                            {formData.businessExpansion && <Badge variant="warning">Business Expansion</Badge>}
+                          </div>
+                        </div>
+                      )}
                       {formData.interests && (
                         <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
                           <span className="detail-label">Interests & Preferences</span>
@@ -1096,6 +1442,49 @@ export const AddCustomerPage: React.FC = () => {
                       })}
                     </div>
                   </div>
+
+                  {/* Summary Box 3: Enterprise & Business Details (Conditional) */}
+                  {(formData.businessName || formData.businessCategory || formData.businessServices || formData.businessLocation || formData.businessIdea) && (
+                    <div className="detail-box">
+                      <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
+                        Enterprise & Business Information
+                      </h4>
+                      <div className="detail-grid">
+                        {formData.businessName && (
+                          <div className="detail-item">
+                            <span className="detail-label">Business / Enterprise Name</span>
+                            <span className="detail-value" style={{ fontWeight: 700, color: 'var(--text-navy)' }}>
+                              {formData.businessName}
+                            </span>
+                          </div>
+                        )}
+                        {formData.businessCategory && (
+                          <div className="detail-item">
+                            <span className="detail-label">Industry Category</span>
+                            <span className="detail-value">{formData.businessCategory}</span>
+                          </div>
+                        )}
+                        {formData.businessServices && (
+                          <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="detail-label">Products & Services</span>
+                            <span className="detail-value">{formData.businessServices}</span>
+                          </div>
+                        )}
+                        {formData.businessLocation && (
+                          <div className="detail-item">
+                            <span className="detail-label">Business Location</span>
+                            <span className="detail-value">{formData.businessLocation}</span>
+                          </div>
+                        )}
+                        {formData.businessIdea && (
+                          <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="detail-label">Expansion Goals / Business Idea</span>
+                            <span className="detail-value">{formData.businessIdea}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Summary Box 3: Follow-up Scheduling Summary */}
                   <div className="detail-box">
