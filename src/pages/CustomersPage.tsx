@@ -15,6 +15,13 @@ import {
   MapPin,
   CheckCircle2,
   Users,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardContent, CardFooter } from '../components/common/Card';
@@ -26,6 +33,8 @@ import {
   deleteCustomer,
   exportCustomersToJSON,
 } from '../services/customerStorage';
+import { useSettings } from '../services/settingsStorage';
+import { useDemoRole } from '../services/roleStorage';
 
 const CATEGORY_LIST: CustomerCategory[] = [
   'Business Owner',
@@ -38,6 +47,9 @@ const CATEGORY_LIST: CustomerCategory[] = [
 ];
 
 const GENDER_LIST: Gender[] = ['Female', 'Male', 'Prefer not to say'];
+
+type SortField = 'fullName' | 'id' | 'category' | 'createdAt';
+type SortDirection = 'asc' | 'desc';
 
 // Helper for category badge styling
 const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
@@ -61,24 +73,65 @@ const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
   const { customers, totalCount } = useCustomers();
+  const { categories: dynamicCategories } = useSettings();
+  const { isAdmin } = useDemoRole();
+  const categoryOptions = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORY_LIST;
 
   // Search & Filtering State
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [genderFilter, setGenderFilter] = useState<string>('All');
 
+  // Sorting State
+  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
   // Modal States
   const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
-  // Filter logic
-  const filteredCustomers = useMemo(() => {
+  // Reset pagination when search or filters change
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+
+  const handleCategoryFilterChange = (val: string) => {
+    setCategoryFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handleGenderFilterChange = (val: string) => {
+    setGenderFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (val: number) => {
+    setPageSize(val);
+    setCurrentPage(1);
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection(field === 'createdAt' ? 'desc' : 'asc');
+    }
+    setCurrentPage(1);
+  };
+
+  // Filter & Sort Logic
+  const sortedAndFilteredCustomers = useMemo(() => {
     const query = searchTerm.toLowerCase().trim();
-    // Normalized comparison string for phone matching (ignores spaces and hyphens, handles optional +91 prefix)
     const cleanPhoneQuery = query.replace(/^\+91[\s-]*/, '').replace(/[\s-]/g, '');
 
-    return customers.filter((c) => {
+    const filtered = customers.filter((c) => {
       const cleanStoredContact = c.primaryContact.replace(/^\+91[\s-]*/, '').replace(/[\s-]/g, '');
 
       const matchesSearch =
@@ -95,7 +148,33 @@ export const CustomersPage: React.FC = () => {
 
       return matchesSearch && matchesCategory && matchesGender;
     });
-  }, [customers, searchTerm, categoryFilter, genderFilter]);
+
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'fullName') {
+        comparison = a.fullName.localeCompare(b.fullName);
+      } else if (sortField === 'id') {
+        const numA = parseInt(a.id.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.id.replace(/\D/g, ''), 10) || 0;
+        comparison = numA !== numB ? numA - numB : a.id.localeCompare(b.id);
+      } else if (sortField === 'category') {
+        comparison = a.category.localeCompare(b.category);
+      } else if (sortField === 'createdAt') {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        comparison = timeA - timeB;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [customers, searchTerm, categoryFilter, genderFilter, sortField, sortDirection]);
+
+  // Pagination calculation
+  const totalRecords = sortedAndFilteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedCustomers = sortedAndFilteredCustomers.slice(startIndex, endIndex);
 
   const handleDeleteConfirm = () => {
     if (!customerToDelete) return;
@@ -127,12 +206,21 @@ export const CustomersPage: React.FC = () => {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
       });
     } catch {
       return isoString;
     }
+  };
+
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown size={13} style={{ opacity: 0.4, marginLeft: '0.35rem' }} />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp size={13} style={{ color: 'var(--primary)', marginLeft: '0.35rem' }} />
+    ) : (
+      <ArrowDown size={13} style={{ color: 'var(--primary)', marginLeft: '0.35rem' }} />
+    );
   };
 
   return (
@@ -163,7 +251,7 @@ export const CustomersPage: React.FC = () => {
 
       {/* Action Notification Banner */}
       {actionNotice && (
-        <div className="ui-alert-banner success">
+        <div className="ui-alert-banner success" style={{ marginBottom: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <CheckCircle2 size={18} />
             <span>{actionNotice}</span>
@@ -192,8 +280,8 @@ export const CustomersPage: React.FC = () => {
           }}
         >
           {/* Search Input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '320px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
               <Search
                 size={16}
                 style={{
@@ -210,7 +298,7 @@ export const CustomersPage: React.FC = () => {
                 style={{ paddingLeft: '2.25rem' }}
                 placeholder="Search by name, ID, phone..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
 
@@ -221,11 +309,11 @@ export const CustomersPage: React.FC = () => {
                 className="form-select"
                 style={{ width: 'auto', minWidth: '150px' }}
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) => handleCategoryFilterChange(e.target.value)}
                 aria-label="Filter by category"
               >
                 <option value="All">All Categories</option>
-                {CATEGORY_LIST.map((cat) => (
+                {categoryOptions.map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
                   </option>
@@ -239,7 +327,7 @@ export const CustomersPage: React.FC = () => {
                 className="form-select"
                 style={{ width: 'auto', minWidth: '130px' }}
                 value={genderFilter}
-                onChange={(e) => setGenderFilter(e.target.value)}
+                onChange={(e) => handleGenderFilterChange(e.target.value)}
                 aria-label="Filter by gender"
               >
                 <option value="All">All Genders</option>
@@ -252,10 +340,26 @@ export const CustomersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Records summary counter */}
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Showing <strong>{filteredCustomers.length}</strong> of{' '}
-            <strong>{totalCount}</strong> saved customer{totalCount === 1 ? '' : 's'}
+          {/* Rows per page selector and counter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <span>Rows:</span>
+              <select
+                className="form-select"
+                style={{ width: 'auto', padding: '0.3rem 1.75rem 0.3rem 0.6rem', fontSize: '0.85rem' }}
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                aria-label="Rows per page"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Total: <strong>{totalCount}</strong>
+            </div>
           </div>
         </div>
       </Card>
@@ -281,7 +385,7 @@ export const CustomersPage: React.FC = () => {
                 Add First Customer
               </Button>
             </div>
-          ) : filteredCustomers.length === 0 ? (
+          ) : sortedAndFilteredCustomers.length === 0 ? (
             /* Empty Filter State */
             <div className="empty-state" style={{ padding: '3rem 1.5rem' }}>
               <div className="empty-state-icon" style={{ backgroundColor: '#f1f5f9', color: '#64748b' }}>
@@ -298,30 +402,64 @@ export const CustomersPage: React.FC = () => {
                   setSearchTerm('');
                   setCategoryFilter('All');
                   setGenderFilter('All');
+                  setCurrentPage(1);
                 }}
               >
                 Reset Filters
               </Button>
             </div>
           ) : (
-            /* Responsive Data Table */
+            /* Responsive Data Table with Interactive Sorting */
             <div className="table-responsive">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Customer Name & ID</th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('fullName')}
+                      title="Sort by Customer Name"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Customer Name {renderSortIndicator('fullName')}
+                      </div>
+                    </th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('id')}
+                      title="Sort by Customer ID"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Customer ID {renderSortIndicator('id')}
+                      </div>
+                    </th>
                     <th>Contact Info</th>
                     <th>Demographics</th>
-                    <th>Category</th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('category')}
+                      title="Sort by Category"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Category {renderSortIndicator('category')}
+                      </div>
+                    </th>
                     <th>Location</th>
-                    <th>Created</th>
+                    <th
+                      style={{ cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => handleSort('createdAt')}
+                      title="Sort by Created Date"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Created {renderSortIndicator('createdAt')}
+                      </div>
+                    </th>
                     <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCustomers.map((customer) => (
+                  {paginatedCustomers.map((customer) => (
                     <tr key={customer.id}>
-                      {/* Name & ID */}
+                      {/* Name */}
                       <td>
                         <div
                           style={{
@@ -329,12 +467,25 @@ export const CustomersPage: React.FC = () => {
                             color: 'var(--text-navy)',
                             cursor: 'pointer',
                           }}
-                          onClick={() => setViewCustomer(customer)}
-                          title="Click to view details"
+                          onClick={() => navigate(`/customers/${customer.id}`)}
+                          title="Click to view full customer profile"
                         >
                           {customer.fullName}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
+                      </td>
+
+                      {/* Customer ID */}
+                      <td>
+                        <div
+                          style={{
+                            fontSize: '0.85rem',
+                            color: 'var(--primary)',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => navigate(`/customers/${customer.id}`)}
+                          title="Click to open customer profile"
+                        >
                           {customer.id}
                         </div>
                       </td>
@@ -391,7 +542,7 @@ export const CustomersPage: React.FC = () => {
                       {/* Registration Date */}
                       <td>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          {formatDateTime(customer.createdAt).split(',')[0]}
+                          {formatDateTime(customer.createdAt)}
                         </span>
                       </td>
 
@@ -403,7 +554,7 @@ export const CustomersPage: React.FC = () => {
                             size="sm"
                             icon={<Eye size={15} />}
                             title="View Full Profile"
-                            onClick={() => setViewCustomer(customer)}
+                            onClick={() => navigate(`/customers/${customer.id}`)}
                             aria-label={`View ${customer.fullName}`}
                           />
                           <Button
@@ -414,15 +565,17 @@ export const CustomersPage: React.FC = () => {
                             onClick={() => navigate(`/customers/edit/${customer.id}`)}
                             aria-label={`Edit ${customer.fullName}`}
                           />
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            style={{ color: '#ef4444' }}
-                            icon={<Trash2 size={15} />}
-                            title="Delete Customer"
-                            onClick={() => setCustomerToDelete(customer)}
-                            aria-label={`Delete ${customer.fullName}`}
-                          />
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              style={{ color: '#ef4444' }}
+                              icon={<Trash2 size={15} />}
+                              title="Delete Customer"
+                              onClick={() => setCustomerToDelete(customer)}
+                              aria-label={`Delete ${customer.fullName}`}
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -433,27 +586,65 @@ export const CustomersPage: React.FC = () => {
           )}
         </CardContent>
 
-        {totalCount > 0 && (
-          <CardFooter>
+        {/* Footer with Pagination Controls */}
+        {totalRecords > 0 && (
+          <CardFooter style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Showing {filteredCustomers.length} of {totalCount} total entries
+              Showing <strong>{startIndex + 1}</strong> to <strong>{endIndex}</strong> of{' '}
+              <strong>{totalRecords}</strong> filtered customer{totalRecords === 1 ? '' : 's'}
+              {totalRecords !== totalCount && ` (filtered from ${totalCount} total)`}
             </span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+
+            {/* Pagination Button Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Button
                 variant="outline"
                 size="sm"
-                icon={<Download size={14} />}
-                onClick={handleExportJSON}
-              >
-                Export All ({totalCount}) to JSON
-              </Button>
+                icon={<ChevronsLeft size={15} />}
+                disabled={activePage <= 1}
+                onClick={() => setCurrentPage(1)}
+                title="First Page"
+                aria-label="First Page"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<ChevronLeft size={15} />}
+                disabled={activePage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous Page"
+                aria-label="Previous Page"
+              />
+
+              <span style={{ padding: '0 0.5rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-navy)' }}>
+                Page {activePage} of {totalPages}
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<ChevronRight size={15} />}
+                disabled={activePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next Page"
+                aria-label="Next Page"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<ChevronsRight size={15} />}
+                disabled={activePage >= totalPages}
+                onClick={() => setCurrentPage(totalPages)}
+                title="Last Page"
+                aria-label="Last Page"
+              />
             </div>
           </CardFooter>
         )}
       </Card>
 
       {/* =====================================================================
-          View Customer Profile Modal
+          View Customer Profile Modal (Also kept for quick modal preview)
          ===================================================================== */}
       {viewCustomer && (
         <div className="ui-modal-overlay" onClick={() => setViewCustomer(null)}>
@@ -490,7 +681,6 @@ export const CustomersPage: React.FC = () => {
 
             <div className="ui-modal-body">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {/* Identity & Demographics */}
                 <div className="detail-box">
                   <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
                     Demographics & Profile
@@ -515,7 +705,6 @@ export const CustomersPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Contact Information */}
                 <div className="detail-box">
                   <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
                     Contact Information
@@ -530,7 +719,6 @@ export const CustomersPage: React.FC = () => {
                         </a>
                       </span>
                     </div>
-
                     <div className="detail-item">
                       <span className="detail-label">Email Address</span>
                       <span className="detail-value">
@@ -543,7 +731,6 @@ export const CustomersPage: React.FC = () => {
                         )}
                       </span>
                     </div>
-
                     <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
                       <span className="detail-label">Location / Address</span>
                       <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -554,7 +741,6 @@ export const CustomersPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Interests & Notes */}
                 {(viewCustomer.interests || viewCustomer.notes) && (
                   <div className="detail-box">
                     <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
@@ -579,7 +765,6 @@ export const CustomersPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Audit Timestamps */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0 0.5rem' }}>
                   <span>Created: {formatDateTime(viewCustomer.createdAt)}</span>
                   <span>Last Updated: {formatDateTime(viewCustomer.updatedAt)}</span>
@@ -593,14 +778,14 @@ export const CustomersPage: React.FC = () => {
               </Button>
               <Button
                 variant="primary"
-                icon={<Edit size={15} />}
+                icon={<Eye size={15} />}
                 onClick={() => {
                   const id = viewCustomer.id;
                   setViewCustomer(null);
-                  navigate(`/customers/edit/${id}`);
+                  navigate(`/customers/${id}`);
                 }}
               >
-                Edit Customer
+                Go to Dedicated Profile
               </Button>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useCustomers } from '../../services/customerStorage';
+import { useFollowUps } from '../../services/followUpStorage';
+import { useDemoRole } from '../../services/roleStorage';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,13 +21,21 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const location = useLocation();
   const { totalCount } = useCustomers();
+  const { pendingCount } = useFollowUps();
+  const { role, isAdmin } = useDemoRole();
 
   const mainNavItems = [
     {
       label: 'Dashboard',
-      path: '/',
+      path: '/dashboard',
       icon: <LayoutDashboard size={19} />,
+    },
+    {
+      label: 'Welcome Guide',
+      path: '/welcome',
+      icon: <Sparkles size={19} />,
     },
     {
       label: 'Customers',
@@ -42,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'Follow-ups',
       path: '/follow-ups',
       icon: <Clock size={19} />,
-      badge: '5',
+      badge: pendingCount > 0 ? String(pendingCount) : undefined,
     },
     {
       label: 'Import / Export',
@@ -56,11 +66,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'Team Members',
       path: '/team',
       icon: <ShieldCheck size={19} />,
+      badge: !isAdmin ? 'Admin' : undefined,
     },
     {
       label: 'Settings',
       path: '/settings',
       icon: <Settings size={19} />,
+      badge: !isAdmin ? 'Admin' : undefined,
     },
   ];
 
@@ -99,9 +111,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  end={item.path === '/'}
+                  end={item.path === '/welcome' || item.path === '/dashboard'}
                   className={({ isActive }) =>
-                    `nav-item-link ${isActive ? 'active' : ''}`
+                    `nav-item-link ${
+                      isActive || (item.path === '/welcome' && location.pathname === '/')
+                        ? 'active'
+                        : ''
+                    }`
                   }
                   onClick={onClose}
                 >
@@ -141,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className="status-dot-pulse" />
           <div className="status-info">
             <span className="status-title">Door2Life Core</span>
-            <span className="status-meta">Online • Storage v1 Active</span>
+            <span className="status-meta">Online • {role} Role (Demo)</span>
           </div>
         </div>
       </div>

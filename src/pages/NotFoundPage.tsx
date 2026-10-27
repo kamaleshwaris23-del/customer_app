@@ -34,7 +34,7 @@ export const NotFoundPage: React.FC = () => {
         <Button
           variant="primary"
           icon={<Home size={16} />}
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/dashboard')}
         >
           Return to Dashboard
         </Button>

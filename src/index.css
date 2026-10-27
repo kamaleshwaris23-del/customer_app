@@ -1199,3 +1199,435 @@ button, input, select, textarea {
     flex: 1;
   }
 }
+
+/* ==========================================================================
+   Supabase Authentication & Login Page Styles
+   ========================================================================== */
+
+.login-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.25rem;
+  background: radial-gradient(circle at 50% 0%, #eff6ff 0%, #f8fafc 60%, #f1f5f9 100%);
+}
+
+.login-card-container {
+  width: 100%;
+  max-width: 460px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  padding: 2.5rem 2.25rem;
+  position: relative;
+  overflow: hidden;
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-accent-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+}
+
+.login-brand-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-logo-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  margin-bottom: 0.85rem;
+}
+
+.login-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  justify-content: center;
+}
+
+.login-brand-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-navy);
+  letter-spacing: -0.025em;
+}
+
+.login-brand-title span {
+  color: var(--primary);
+}
+
+.login-brand-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background-color: var(--primary-light);
+  color: var(--primary);
+}
+
+.login-brand-subtitle {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+}
+
+.login-heading-section {
+  margin-bottom: 1.5rem;
+}
+
+.login-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-navy);
+  letter-spacing: -0.015em;
+}
+
+.login-subheading {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.45;
+}
+
+.login-alert {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+}
+
+.login-alert-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.login-alert-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.login-alert-text {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.input-with-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input-icon-left {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.form-input.input-padded-left {
+  padding-left: 2.6rem;
+}
+
+.form-input.input-padded-right {
+  padding-right: 2.75rem;
+}
+
+.input-action-btn {
+  position: absolute;
+  right: 0.6rem;
+  background: transparent;
+  border: none;
+  padding: 0.4rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.input-action-btn:hover {
+  color: var(--text-navy);
+  background-color: var(--bg-surface-hover);
+}
+
+.login-password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-submit-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.8rem 1.25rem;
+  font-size: 0.95rem;
+}
+
+.spinner-rotate {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.login-security-footer {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.login-security-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.login-security-icon {
+  color: var(--primary);
+}
+
+.login-security-notice {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  max-width: 320px;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   Auth Loading Screen (Prevents Flash of Dashboard)
+   ========================================================================== */
+
+.auth-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-app);
+}
+
+.auth-loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.5rem 2rem;
+  max-width: 380px;
+  width: 90%;
+}
+
+.auth-loading-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.25rem;
+  animation: pulseLogo 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseLogo {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(0.96);
+  }
+}
+
+.auth-loading-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-navy);
+}
+
+.auth-loading-title span {
+  color: var(--primary);
+}
+
+.auth-loading-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.auth-loading-spinner-wrap {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.auth-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--primary-border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.auth-loading-message {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.auth-loading-security-badge {
+  margin-top: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+}
+
+/* ==========================================================================
+   Header User Profile Dropdown Menu & Quick Sign Out
+   ========================================================================== */
+
+.header-user-menu-container {
+  position: relative;
+}
+
+.dropdown-chevron {
+  transition: transform var(--transition-fast);
+  color: var(--text-muted);
+}
+
+.dropdown-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.user-profile-btn.active {
+  border-color: var(--primary-border);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  width: 250px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+  padding: 0.5rem;
+  animation: scaleIn 0.15s ease-out;
+}
+
+.user-dropdown-header {
+  padding: 0.75rem 0.85rem 0.65rem;
+}
+
+.user-dropdown-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-email {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-dropdown-badge-row {
+  margin-top: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background-color: var(--border-subtle);
+  margin: 0.35rem 0;
+}
+
+.user-dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.user-dropdown-item:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-navy);
+}
+
+.user-dropdown-item.danger {
+  color: #dc2626;
+}
+
+.user-dropdown-item.danger:hover {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
