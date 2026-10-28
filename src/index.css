@@ -1201,7 +1201,7 @@ button, input, select, textarea {
 }
 
 /* ==========================================================================
-   Supabase Authentication & Login Page Styles
+   Door2Life Authentication & Login Page Styles
    ========================================================================== */
 
 .login-page-wrapper {
@@ -1210,20 +1210,22 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   padding: 2rem 1.25rem;
-  background: radial-gradient(circle at 50% 0%, #eff6ff 0%, #f8fafc 60%, #f1f5f9 100%);
+  background: radial-gradient(circle at 50% 15%, #eff6ff 0%, #f1f7fe 45%, #e2eaf5 100%);
+  box-sizing: border-box;
 }
 
 .login-card-container {
   width: 100%;
-  max-width: 460px;
+  max-width: 440px;
   background-color: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-  padding: 2.5rem 2.25rem;
+  padding: 2.5rem 2.25rem 2rem;
   position: relative;
   overflow: hidden;
   animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
 .login-accent-bar {
@@ -1240,7 +1242,7 @@ button, input, select, textarea {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .login-logo-mark {
@@ -1253,71 +1255,42 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-  margin-bottom: 0.85rem;
-}
-
-.login-title-group {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  justify-content: center;
-}
-
-.login-brand-title {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-navy);
-  letter-spacing: -0.025em;
-}
-
-.login-brand-title span {
-  color: var(--primary);
-}
-
-.login-brand-badge {
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 0.2rem 0.55rem;
-  border-radius: var(--radius-full);
-  background-color: var(--primary-light);
-  color: var(--primary);
-}
-
-.login-brand-subtitle {
-  font-size: 0.825rem;
-  color: var(--text-muted);
-  margin-top: 0.35rem;
-}
-
-.login-heading-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .login-heading {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.45rem;
+  font-weight: 800;
   color: var(--text-navy);
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
+  margin: 0;
+  line-height: 1.25;
 }
 
 .login-subheading {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
-  line-height: 1.45;
+  margin-top: 0.4rem;
+  margin-bottom: 0;
+  line-height: 1.4;
 }
 
+/* Alert Notification Banner */
 .login-alert {
-  margin-bottom: 1.25rem;
-  padding: 0.75rem 1rem;
-}
-
-.login-alert-content {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.65rem;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--radius-md);
+  font-size: 0.825rem;
+  line-height: 1.42;
+  margin-bottom: 1.25rem;
+}
+
+.login-alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
 }
 
 .login-alert-icon {
@@ -1326,14 +1299,67 @@ button, input, select, textarea {
 }
 
 .login-alert-text {
-  font-size: 0.85rem;
-  line-height: 1.4;
+  flex: 1;
 }
 
+/* Prominent Sign In with Google Button */
+.btn-google {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background-color: #ffffff;
+  color: var(--text-navy);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  font-size: 0.925rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  outline: none;
+}
+
+.btn-google:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+}
+
+.btn-google:active {
+  transform: translateY(1px);
+  background-color: #f1f5f9;
+}
+
+/* Small OR Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 1.35rem 0;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-subtle);
+}
+
+.login-divider-text {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Login Form Styles */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.15rem;
 }
 
 .input-with-icon-wrapper {
@@ -1380,58 +1406,137 @@ button, input, select, textarea {
   background-color: var(--bg-surface-hover);
 }
 
-.login-password-label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .login-submit-btn {
   width: 100%;
-  margin-top: 0.5rem;
-  padding: 0.8rem 1.25rem;
+  height: 46px;
+  margin-top: 0.35rem;
+  padding: 0.75rem 1.25rem;
   font-size: 0.95rem;
-}
-
-.spinner-rotate {
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.login-security-footer {
-  margin-top: 2rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border-subtle);
-  text-align: center;
+  font-weight: 700;
+  border-radius: var(--radius-md);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: all var(--transition-fast);
 }
 
-.login-security-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.75rem;
-  font-weight: 600;
+.login-submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+/* Local Demo Admin Notice & Helper (Development & Testing Only) */
+.login-demo-box {
+  margin-top: 1.35rem;
+  padding: 0.95rem 1rem;
+  background-color: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
-.login-security-icon {
-  color: var(--primary);
+.login-demo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
 }
 
-.login-security-notice {
+.login-demo-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.login-demo-tag {
   font-size: 0.72rem;
   color: var(--text-muted);
-  max-width: 320px;
+  font-weight: 600;
+}
+
+.login-demo-desc {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin: 0 0 0.65rem 0;
   line-height: 1.35;
+}
+
+.login-demo-credentials-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background-color: #ffffff;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+}
+
+.login-demo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.login-demo-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.login-demo-code {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--primary-hover);
+  background-color: #f1f5f9;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  user-select: all;
+}
+
+.login-demo-fill-btn {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  background-color: #ffffff;
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.login-demo-fill-btn:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary-hover);
+}
+
+/* Subtle, Professional Footer */
+.login-subtle-footer {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 /* ==========================================================================
@@ -1629,5 +1734,469 @@ button, input, select, textarea {
 .user-dropdown-item.danger:hover {
   background-color: #fef2f2;
   color: #b91c1c;
+}
+
+/* ==========================================================================
+   Door2Life — Animated Splash Intro & Transitions
+   ========================================================================== */
+
+.splash-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 25%, #e0f2fe 0%, #eff6ff 45%, #e2eefb 100%);
+  padding: 2rem 1.5rem;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.splash-intro-overlay.fading-out {
+  animation: splashFadeExit 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none !important;
+}
+
+.splash-content-container {
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+.splash-brand-emblem {
+  position: relative;
+  overflow: hidden;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.4), 0 0 0 4px rgba(219, 234, 254, 0.6);
+  margin-bottom: 1rem;
+  animation: splashLogoEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.splash-brand-emblem::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  transform: rotate(25deg) translateY(-100%);
+  animation: splashShineSweep 2.2s ease-in-out infinite 0.8s;
+  pointer-events: none;
+}
+
+.splash-brand-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  line-height: 1.15;
+  margin-bottom: 0.35rem;
+  animation: splashTextReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards;
+}
+
+.splash-brand-title span {
+  color: #2563eb;
+}
+
+.splash-brand-subtitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+  animation: splashTextReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s backwards;
+}
+
+.splash-svg-stage {
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Sequenced Illustration Animations */
+.splash-anim-person-left {
+  animation: splashSlideLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.7s backwards;
+}
+
+.splash-anim-person-right {
+  animation: splashSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s backwards;
+}
+
+.splash-anim-person-center {
+  animation: splashTextReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.9s backwards;
+}
+
+.splash-anim-card {
+  animation: splashCardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.1s backwards;
+}
+
+.splash-anim-chart-card {
+  animation: splashCardAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.3s backwards;
+}
+
+.splash-anim-chart-line {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: splashDrawChart 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards;
+}
+
+.splash-anim-storage-node {
+  animation: splashCardAppear 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.2s backwards;
+}
+
+.splash-anim-success-badge {
+  transform-origin: 150px 80px;
+  animation: splashPopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.9s backwards;
+}
+
+.splash-anim-search-badge {
+  transform-origin: 270px 120px;
+  animation: splashPopIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 2.1s backwards;
+}
+
+/* Background floating glow particles */
+.splash-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(28px);
+  z-index: 1;
+}
+
+.splash-orb-1 {
+  width: 280px;
+  height: 280px;
+  top: 10%;
+  left: 15%;
+  background: rgba(191, 219, 254, 0.45);
+  animation: splashFloatOrb 6s ease-in-out infinite alternate;
+}
+
+.splash-orb-2 {
+  width: 320px;
+  height: 320px;
+  bottom: 10%;
+  right: 15%;
+  background: rgba(147, 197, 253, 0.35);
+  animation: splashFloatOrb 7s ease-in-out infinite alternate-reverse;
+}
+
+.splash-orb-3 {
+  width: 260px;
+  height: 260px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(191, 219, 254, 0.5) 0%, rgba(224, 242, 254, 0) 70%);
+  filter: blur(35px);
+  animation: splashPulseCore 3s ease-in-out infinite;
+}
+
+/* Subtle Floating Micro-Particles */
+.splash-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: #60a5fa;
+  opacity: 0.35;
+  filter: blur(1px);
+}
+
+.splash-particle-1 {
+  width: 8px;
+  height: 8px;
+  top: 22%;
+  left: 18%;
+  animation: splashParticleFloat 4.5s ease-in-out infinite;
+}
+
+.splash-particle-2 {
+  width: 6px;
+  height: 6px;
+  top: 35%;
+  right: 20%;
+  animation: splashParticleFloat 5.2s ease-in-out infinite 0.7s;
+}
+
+.splash-particle-3 {
+  width: 10px;
+  height: 10px;
+  bottom: 25%;
+  left: 22%;
+  animation: splashParticleFloat 6s ease-in-out infinite 1.2s;
+}
+
+.splash-particle-4 {
+  width: 5px;
+  height: 5px;
+  bottom: 35%;
+  right: 24%;
+  animation: splashParticleFloat 4.8s ease-in-out infinite 0.4s;
+}
+
+.splash-particle-5 {
+  width: 7px;
+  height: 7px;
+  top: 15%;
+  right: 35%;
+  animation: splashParticleFloat 5.5s ease-in-out infinite 1.8s;
+}
+
+/* Skip Button */
+.splash-skip-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(219, 234, 254, 0.8);
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  transition: all var(--transition-fast);
+}
+
+.splash-skip-btn:hover {
+  background: #ffffff;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+/* Progress Bar */
+.splash-progress-track {
+  width: 140px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background-color: rgba(191, 219, 254, 0.5);
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.splash-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+  border-radius: var(--radius-full);
+  animation: splashProgressBar 3s linear forwards;
+}
+
+/* Screen transition */
+.welcome-screen-fade-in {
+  animation: splashFadeEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Keyframe definitions */
+@keyframes splashLogoEnter {
+  0% {
+    transform: scale(0.6) translateY(10px);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08) translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes splashTextReveal {
+  0% {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes splashSlideLeft {
+  0% {
+    transform: translateX(-35px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes splashSlideRight {
+  0% {
+    transform: translateX(35px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes splashCardAppear {
+  0% {
+    transform: translateY(22px) scale(0.88);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-3px) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splashDrawChart {
+  0% {
+    stroke-dashoffset: 120;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes splashPopIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes splashFloatOrb {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(15px, -20px) scale(1.08);
+  }
+}
+
+@keyframes splashProgressBar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes splashFadeExit {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes splashFadeEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes splashParticleFloat {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(-16px) translateX(8px);
+    opacity: 0.6;
+  }
+}
+
+@keyframes splashShineSweep {
+  0% {
+    transform: rotate(25deg) translateY(-120%);
+  }
+  60%, 100% {
+    transform: rotate(25deg) translateY(120%);
+  }
+}
+
+@keyframes splashPulseCore {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(0.92);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-intro-overlay,
+  .splash-brand-emblem,
+  .splash-brand-emblem::after,
+  .splash-brand-title,
+  .splash-brand-subtitle,
+  .splash-anim-person-left,
+  .splash-anim-person-right,
+  .splash-anim-person-center,
+  .splash-anim-card,
+  .splash-anim-chart-card,
+  .splash-anim-chart-line,
+  .splash-anim-storage-node,
+  .splash-anim-success-badge,
+  .splash-anim-search-badge,
+  .splash-progress-bar,
+  .splash-particle,
+  .splash-orb,
+  .welcome-screen-fade-in {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 

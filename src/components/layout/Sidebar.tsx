@@ -1,5 +1,4 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -10,10 +9,12 @@ import {
   Settings,
   X,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { useCustomers } from '../../services/customerStorage';
 import { useFollowUps } from '../../services/followUpStorage';
 import { useDemoRole } from '../../services/roleStorage';
+import { logoutLocalSession } from '../../services/authStorage';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const location = useLocation();
+  const navigate = useNavigate();
   const { totalCount } = useCustomers();
   const { pendingCount } = useFollowUps();
   const { role, isAdmin } = useDemoRole();
@@ -31,11 +32,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'Dashboard',
       path: '/dashboard',
       icon: <LayoutDashboard size={19} />,
-    },
-    {
-      label: 'Welcome Guide',
-      path: '/welcome',
-      icon: <Sparkles size={19} />,
     },
     {
       label: 'Customers',
@@ -80,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     <aside className={`app-sidebar ${isOpen ? 'mobile-open' : ''}`}>
       {/* Brand Header */}
       <div className="sidebar-header">
-        <NavLink to="/" className="brand-link" onClick={onClose}>
+        <NavLink to="/dashboard" className="brand-link" onClick={onClose}>
           <div className="brand-logo-mark">
             <Sparkles size={20} strokeWidth={2.5} />
           </div>
@@ -111,13 +107,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <li key={item.path}>
                 <NavLink
                   to={item.path}
-                  end={item.path === '/welcome' || item.path === '/dashboard'}
+                  end={item.path === '/dashboard'}
                   className={({ isActive }) =>
-                    `nav-item-link ${
-                      isActive || (item.path === '/welcome' && location.pathname === '/')
-                        ? 'active'
-                        : ''
-                    }`
+                    `nav-item-link ${isActive ? 'active' : ''}`
                   }
                   onClick={onClose}
                 >
@@ -160,6 +152,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <span className="status-meta">Online • {role} Role (Demo)</span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            logoutLocalSession();
+            onClose();
+            navigate('/login');
+          }}
+          style={{
+            marginTop: '0.65rem',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            padding: '0.45rem 0.75rem',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-subtle)',
+            backgroundColor: '#ffffff',
+            color: '#dc2626',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+          title="Sign out of local session"
+        >
+          <LogOut size={14} />
+          <span>Sign Out</span>
+        </button>
       </div>
     </aside>
   );

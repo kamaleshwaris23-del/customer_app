@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { DashboardPage } from './pages/DashboardPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { AddCustomerPage } from './pages/AddCustomerPage';
@@ -9,21 +10,29 @@ import { ImportExportPage } from './pages/ImportExportPage';
 import { TeamMembersPage } from './pages/TeamMembersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WelcomePage } from './pages/WelcomePage';
+import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Routes>
-        <Route path="/" element={<AppLayout />}>
-          {/* Default entry point: render WelcomePage when app opens */}
-          <Route index element={<WelcomePage />} />
-          <Route path="welcome" element={<WelcomePage />} />
-          
-          {/* Dashboard Route */}
+        {/* Standalone Full-Screen Pages (Outside AppLayout — No Sidebar, No Header, No Breadcrumb) */}
+        <Route index element={<WelcomePage />} />
+        <Route path="welcome" element={<WelcomePage />} />
+        <Route path="login" element={<LoginPage />} />
+
+        {/* Protected Application Layout & Feature Pages (Inside AppLayout with Authentication Guard) */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="dashboard" element={<DashboardPage />} />
-          
-          {/* Main App Routes */}
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/edit/:id" element={<AddCustomerPage />} />
           <Route path="customers/:id" element={<CustomerProfilePage />} />
@@ -32,11 +41,8 @@ export function App() {
           <Route path="import-export" element={<ImportExportPage />} />
           <Route path="team" element={<TeamMembersPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          
-          {/* Legacy login redirect to dashboard */}
-          <Route path="login" element={<Navigate to="/dashboard" replace />} />
-          
-          {/* 404 Catch-all */}
+
+          {/* 404 Catch-all within application */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

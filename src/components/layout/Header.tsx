@@ -1,7 +1,8 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
-import { Menu, Search, Bell, ChevronDown } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Menu, Search, Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useDemoRole } from '../../services/roleStorage';
+import { logoutLocalSession } from '../../services/authStorage';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -9,6 +10,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { role, setDemoRole } = useDemoRole();
 
   // Helper to resolve title from pathname
@@ -144,6 +146,21 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           </div>
           <ChevronDown size={14} color="#64748b" />
         </div>
+
+        {/* Sign Out Action Button */}
+        <button
+          type="button"
+          className="header-icon-btn"
+          aria-label="Sign Out"
+          title="Sign Out of Session"
+          onClick={() => {
+            logoutLocalSession();
+            navigate('/login');
+          }}
+          style={{ color: '#dc2626' }}
+        >
+          <LogOut size={17} />
+        </button>
       </div>
     </header>
   );

@@ -99,6 +99,18 @@ import {
   setStoredRole,
 } from '../src/services/roleStorage.ts';
 
+import {
+  AUTH_STORAGE_KEY,
+  getStoredSession,
+  isAuthenticated,
+  loginLocalSession,
+  logoutLocalSession,
+  AUTH_BACKEND_REQUIREMENTS,
+  authenticateWithCredentials,
+  isGoogleOAuthAvailable,
+  authenticateWithGoogle,
+} from '../src/services/authStorage.ts';
+
 describe('Door2Life Customer Management Automated Tests', () => {
   beforeEach(() => {
     mockStorage.clear();
@@ -1333,6 +1345,108 @@ describe('Door2Life Customer Management Automated Tests', () => {
       assert.equal(importedCust.trainingRequired, false);
     });
   });
-});
 
+  describe('15. Authentication Service & Local Session Gateway (door2life_session_v1)', () => {
+    it('initializes in unauthenticated state when storage is empty', () => {
+      assert.equal(AUTH_STORAGE_KEY, 'door2life_session_v1');
+      assert.equal(getStoredSession(), null);
+      assert.equal(isAuthenticated(), false);
+    });
+
+    it('establishes a local session, syncs with role, and verifies authentication', () => {
+      const session = loginLocalSession('operator@door2life.local', 'Field Tester', 'Team Member');
+      assert.equal(isAuthenticated(), true);
+      assert.equal(session.email, 'operator@door2life.local');
+      assert.equal(session.name, 'Field Tester');
+      assert.equal(session.role, 'Team Member');
+      assert.equal(session.authType, 'local-session');
+      assert.equal(getStoredRole(), 'Team Member');
+
+      const retrieved = getStoredSession();
+      assert.ok(retrieved);
+      assert.equal(retrieved.email, 'operator@door2life.local');
+      assert.equal(retrieved.role, 'Team Member');
+    });
+
+    it('clears session upon logout', () => {
+      loginLocalSession('admin@door2life.local', 'Admin User', 'Admin');
+      assert.equal(isAuthenticated(), true);
+
+      logoutLocalSession();
+      assert.equal(isAuthenticated(), false);
+      assert.equal(getStoredSession(), null);
+    });
+
+    it('documents backend architecture requirements for production security', () => {
+      assert.equal(AUTH_BACKEND_REQUIREMENTS.architectureStatus, 'Offline LocalStorage Prototype Mode');
+      assert.ok(AUTH_BACKEND_REQUIREMENTS.productionPrerequisites.length >= 4);
+    });
+
+    it('rejects arbitrary credentials and unauthenticated attempts', () => {
+      const emptyResult = authenticateWithCredentials('', '');
+      assert.equal(emptyResult.success, false);
+      assert.match(emptyResult.error || '', /Please enter both email and password/i);
+
+      const arbitraryResult = authenticateWithCredentials('fake.user@unknown.com', 'randomPassword123');
+      assert.equal(arbitraryResult.success, false);
+      assert.match(arbitraryResult.error || '', /Invalid email or password/i);
+
+      const wrongPassResult = authenticateWithCredentials('admin@door2life.local', 'wrongpass');
+      assert.equal(wrongPassResult.success, false);
+      assert.match(wrongPassResult.error || '', /Invalid email or password/i);
+
+      assert.equal(isAuthenticated(), false);
+    });
+
+    it('authenticates genuine credentials and creates active session', () => {
+      // Test demo admin credentials
+      const demoResult = authenticateWithCredentials('admin@door2life.local', 'D2L-Demo-2026!');
+      assert.equal(demoResult.success, true);
+      assert.ok(demoResult.session);
+      assert.equal(demoResult.session?.email, 'admin@door2life.local');
+      assert.equal(demoResult.session?.role, 'Admin');
+      assert.equal(isAuthenticated(), true);
+
+      logoutLocalSession();
+      assert.equal(isAuthenticated(), false);
+
+      // Also verifies compatibility with demo1234
+      const authResult = authenticateWithCredentials('admin@door2life.local', 'demo1234');
+      assert.equal(authResult.success, true);
+      assert.ok(authResult.session);
+      assert.equal(authResult.session?.email, 'admin@door2life.local');
+      assert.equal(authResult.session?.role, 'Admin');
+      assert.equal(isAuthenticated(), true);
+
+      logoutLocalSession();
+      assert.equal(isAuthenticated(), false);
+    });
+
+    it('authenticates valid team members and rejects inactive accounts', () => {
+      // sarah.j@door2life.io is an active Platform Administrator in default team members
+      const teamResult = authenticateWithCredentials('sarah.j@door2life.io', 'demo1234');
+      assert.equal(teamResult.success, true);
+      assert.equal(teamResult.session?.role, 'Admin');
+      assert.equal(isAuthenticated(), true);
+
+      logoutLocalSession();
+
+      // james.t@door2life.io is Inactive in default team members
+      const inactiveResult = authenticateWithCredentials('james.t@door2life.io', 'demo1234');
+      assert.equal(inactiveResult.success, false);
+      assert.match(inactiveResult.error || '', /deactivated/i);
+      assert.equal(isAuthenticated(), false);
+    });
+
+    it('reports Google OAuth configuration status accurately without faking auth', () => {
+      // In this environment, no external OAuth is configured
+      assert.equal(isGoogleOAuthAvailable(), false);
+
+      const googleAttempt = authenticateWithGoogle();
+      assert.equal(googleAttempt.success, false);
+      assert.match(googleAttempt.error || '', /Google authentication is not configured/i);
+      assert.equal(isAuthenticated(), false);
+    });
+  });
+});
 
