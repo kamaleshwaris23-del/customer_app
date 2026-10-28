@@ -286,8 +286,8 @@ export const CustomersPage: React.FC = () => {
           }}
         >
           {/* Search Input */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '100%', maxWidth: '300px' }}>
+          <div className="customers-filter-group">
+            <div className="customers-search-container" style={{ position: 'relative' }}>
               <Search
                 size={16}
                 style={{
@@ -309,11 +309,11 @@ export const CustomersPage: React.FC = () => {
             </div>
 
             {/* Category Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div className="customers-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Filter size={15} style={{ color: 'var(--text-muted)' }} />
               <select
                 className="form-select"
-                style={{ width: 'auto', minWidth: '150px' }}
+                style={{ width: 'auto' }}
                 value={categoryFilter}
                 onChange={(e) => handleCategoryFilterChange(e.target.value)}
                 aria-label="Filter by category"
@@ -328,10 +328,10 @@ export const CustomersPage: React.FC = () => {
             </div>
 
             {/* Gender Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div className="customers-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <select
                 className="form-select"
-                style={{ width: 'auto', minWidth: '130px' }}
+                style={{ width: 'auto' }}
                 value={genderFilter}
                 onChange={(e) => handleGenderFilterChange(e.target.value)}
                 aria-label="Filter by gender"
@@ -347,7 +347,7 @@ export const CustomersPage: React.FC = () => {
           </div>
 
           {/* Rows per page selector and counter */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="customers-rows-selector-wrap" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <span>Rows:</span>
               <select

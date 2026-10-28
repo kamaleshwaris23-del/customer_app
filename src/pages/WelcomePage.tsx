@@ -252,7 +252,7 @@ export const WelcomePage: React.FC = () => {
 
       {/* 2. Standalone Welcome Screen Card (Transitions smoothly in after intro) */}
       <div
-        className={introState === 'completed' ? 'welcome-screen-fade-in' : ''}
+        className={`welcome-card ${introState === 'completed' ? 'welcome-screen-fade-in' : ''}`}
         style={{
           width: '100%',
           maxWidth: '460px',

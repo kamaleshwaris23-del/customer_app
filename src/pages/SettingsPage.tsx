@@ -415,10 +415,10 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '1.75rem' }}>
+      <div className="settings-layout-grid">
         {/* Navigation Tabs */}
         <div>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <ul className="settings-tabs-list" style={{ listStyle: 'none' }}>
             {[
               { id: 'general', label: 'Organization', icon: <Building size={16} /> },
               { id: 'categories', label: 'Categories Management', icon: <Tag size={16} /> },
@@ -963,14 +963,7 @@ export const SettingsPage: React.FC = () => {
                         Exported at: {new Date(backupRestoreSummary.exportedAt).toLocaleString()}
                       </div>
 
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(4, 1fr)',
-                          gap: '0.75rem',
-                          marginBottom: '1.25rem',
-                        }}
-                      >
+                      <div className="backup-stats-grid">
                         <div style={{ padding: '0.5rem 0.75rem', backgroundColor: '#ffffff', borderRadius: 'var(--radius-sm)', border: '1px solid #fed7aa' }}>
                           <div style={{ fontSize: '0.75rem', color: '#9a3412', fontWeight: 600 }}>Customers</div>
                           <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#7c2d12' }}>

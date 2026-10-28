@@ -284,7 +284,7 @@ export const FollowUpsPage: React.FC = () => {
                     gap: '1rem',
                   }}
                 >
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flex: 1, minWidth: '280px' }}>
+                  <div className="followup-item-main">
                     <div
                       style={{
                         width: '42px',

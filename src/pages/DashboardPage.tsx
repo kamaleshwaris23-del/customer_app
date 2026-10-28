@@ -201,7 +201,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Main Grid: Recent Activity & Follow-up queue */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div className="dashboard-main-grid">
         {/* Recent Customers Overview Card (Connected to Real Storage) */}
         <Card>
           <CardHeader
@@ -429,7 +429,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Category Breakdown & Support Insights */}
       {totalCount > 0 && (
-        <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
+        <div className="dashboard-insights-grid">
           {/* Customer Category Segmentation */}
           <Card>
             <CardHeader

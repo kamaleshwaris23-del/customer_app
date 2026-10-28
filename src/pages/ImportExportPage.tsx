@@ -253,7 +253,7 @@ export const ImportExportPage: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '1.75rem', alignItems: 'start' }}>
+      <div className="import-export-grid">
         {/* ===================================================================
             1. IMPORT HUB
            =================================================================== */}
@@ -644,7 +644,7 @@ export const ImportExportPage: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Choose Export Format</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                <div className="export-cards-grid">
                   <div
                     onClick={() => setExportFormat('json')}
                     style={{

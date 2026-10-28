@@ -488,14 +488,7 @@ export const AddCustomerPage: React.FC = () => {
 
       <div style={{ maxWidth: '860px', margin: '0 auto' }}>
         {/* Wizard Step Indicator Bar */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '0.75rem',
-            marginBottom: '1.75rem',
-          }}
-        >
+        <div className="wizard-steps-grid">
           {stepsMeta.map((s) => {
             const isCompleted = currentStep > s.number;
             const isCurrent = currentStep === s.number;
@@ -1052,7 +1045,7 @@ export const AddCustomerPage: React.FC = () => {
                   <label className="form-label" style={{ marginBottom: '0.5rem' }}>
                     Development & Support Preferences
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '0.85rem' }}>
+                  <div className="preferences-grid">
                     <div
                       style={{
                         padding: '0.9rem',

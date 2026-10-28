@@ -240,7 +240,7 @@ export const CustomerProfilePage: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
+      <div className="customer-profile-grid">
         {/* Left Column: Customer Information Details */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Identity & Demographics */}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Search, Bell, ChevronDown, LogOut } from 'lucide-react';
 import { useDemoRole } from '../../services/roleStorage';
@@ -12,6 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setDemoRole } = useDemoRole();
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   // Helper to resolve title from pathname
   const getRouteInfo = (pathname: string) => {
@@ -67,9 +68,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         </button>
 
         <div className="header-breadcrumb">
-          <span>{routeInfo.category}</span>
-          <span>/</span>
-          <span className="current">{routeInfo.title}</span>
+          <span className="breadcrumb-category">{routeInfo.category}</span>
+          <span className="breadcrumb-separator">/</span>
+          <span className="current" title={routeInfo.title}>{routeInfo.title}</span>
         </div>
       </div>
 
@@ -90,31 +91,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
         {/* Demo Role Selector Widget */}
         <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.4rem',
-            backgroundColor: '#f1f5f9',
-            padding: '0.2rem 0.5rem',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)',
-          }}
+          className="header-role-widget"
           title="Demo Role Simulator (UI permissions only — not secure authentication)"
         >
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>Demo Role:</span>
+          <span className="header-role-label">Demo Role:</span>
           <select
-            className="form-select"
-            style={{
-              width: 'auto',
-              padding: '0.2rem 1.6rem 0.2rem 0.5rem',
-              fontSize: '0.78rem',
-              height: 'auto',
-              border: 'none',
-              backgroundColor: '#ffffff',
-              fontWeight: 700,
-              color: role === 'Admin' ? 'var(--primary)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-            }}
+            className="form-select header-role-select"
             value={role}
             onChange={(e) => setDemoRole(e.target.value as any)}
             aria-label="Demo role selector"
@@ -135,16 +117,73 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <span className="header-icon-badge" />
         </button>
 
-        {/* User Profile / Avatar */}
-        <div className="user-profile-btn" role="button" tabIndex={0} title={`Current User (${role} Role)`}>
-          <div className="user-avatar-circle">
-            <span>{role === 'Admin' ? 'SJ' : 'TM'}</span>
+        {/* User Profile / Avatar with Viewport-Safe Dropdown */}
+        <div style={{ position: 'relative' }}>
+          <div
+            className="user-profile-btn"
+            role="button"
+            tabIndex={0}
+            title={`Current User (${role} Role)`}
+            onClick={() => setProfileMenuOpen((prev) => !prev)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setProfileMenuOpen((prev) => !prev);
+              }
+            }}
+          >
+            <div className="user-avatar-circle">
+              <span>{role === 'Admin' ? 'SJ' : 'TM'}</span>
+            </div>
+            <div className="user-details">
+              <span className="user-name">{role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}</span>
+              <span className="user-role">{role} (Demo)</span>
+            </div>
+            <ChevronDown size={14} color="#64748b" />
           </div>
-          <div className="user-details">
-            <span className="user-name">{role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}</span>
-            <span className="user-role">{role} (Demo)</span>
-          </div>
-          <ChevronDown size={14} color="#64748b" />
+
+          {profileMenuOpen && (
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 45 }}
+                onClick={() => setProfileMenuOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="header-profile-dropdown" role="menu">
+                <div className="profile-dropdown-header">
+                  <div className="profile-dropdown-name">
+                    {role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}
+                  </div>
+                  <div className="profile-dropdown-email">
+                    {role === 'Admin' ? 'admin@door2life.local' : 'operator@door2life.local'}
+                  </div>
+                  <div className="profile-dropdown-badge">{role} Access</div>
+                </div>
+                <div className="profile-dropdown-divider" />
+                <button
+                  type="button"
+                  className="profile-dropdown-item"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    navigate(role === 'Admin' ? '/settings' : '/customers');
+                  }}
+                >
+                  {role === 'Admin' ? 'System Settings' : 'Customer Directory'}
+                </button>
+                <button
+                  type="button"
+                  className="profile-dropdown-item text-danger"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    logoutLocalSession();
+                    navigate('/login');
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Sign Out Action Button */}

@@ -189,7 +189,7 @@ export const TeamMembersPage: React.FC = () => {
       </div>
 
       {/* Team Member Cards Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+      <div className="team-cards-grid">
         {team.map((member) => (
           <Card key={member.id}>
             <CardContent style={{ padding: '1.5rem' }}>
