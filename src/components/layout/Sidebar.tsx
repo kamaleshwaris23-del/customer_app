@@ -25,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { totalCount } = useCustomers();
   const { pendingCount } = useFollowUps();
-  const { role, isAdmin } = useDemoRole();
+  const { isAdmin } = useDemoRole();
 
   const mainNavItems = [
     {
@@ -145,14 +145,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
-        <div className="system-status-card">
-          <div className="status-dot-pulse" />
-          <div className="status-info">
-            <span className="status-title">Door2Life Core</span>
-            <span className="status-meta">Online • {role} Role (Demo)</span>
-          </div>
-        </div>
-
         <button
           type="button"
           onClick={() => {
@@ -160,26 +152,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             onClose();
             navigate('/login');
           }}
-          style={{
-            marginTop: '0.65rem',
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            padding: '0.45rem 0.75rem',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-subtle)',
-            backgroundColor: '#ffffff',
-            color: '#dc2626',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
+          className="sidebar-logout-btn"
           title="Sign out of local session"
         >
-          <LogOut size={14} />
+          <LogOut size={15} />
           <span>Sign Out</span>
         </button>
       </div>

@@ -429,24 +429,9 @@ export const SettingsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab(tab.id as SettingsTab)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.65rem',
-                    padding: '0.75rem 0.95rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: 'none',
-                    textAlign: 'left',
-                    backgroundColor: activeTab === tab.id ? 'var(--primary-light)' : 'transparent',
-                    color: activeTab === tab.id ? 'var(--primary)' : 'var(--text-secondary)',
-                    fontWeight: activeTab === tab.id ? 700 : 500,
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`settings-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
                 >
-                  {tab.icon}
+                  <span className="settings-tab-icon">{tab.icon}</span>
                   <span>{tab.label}</span>
                 </button>
               </li>
@@ -589,6 +574,7 @@ export const SettingsPage: React.FC = () => {
                         value={orgFormData.followUpReminderDays}
                         onChange={handleOrgChange}
                         disabled={!isAdmin}
+                        style={{ maxWidth: '240px' }}
                       />
                       <span className="form-helper">
                         Number of days after intake before automatic check-in flag triggers.
@@ -597,8 +583,13 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </CardContent>
                 {isAdmin && (
-                  <CardFooter style={{ justifyContent: 'flex-end' }}>
-                    <Button type="submit" variant="primary" icon={<Save size={16} />}>
+                  <CardFooter style={{ justifyContent: 'flex-end', backgroundColor: '#fafbfc' }}>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      icon={<Save size={16} />}
+                      className="settings-save-btn"
+                    >
                       Save Changes
                     </Button>
                   </CardFooter>
@@ -644,15 +635,7 @@ export const SettingsPage: React.FC = () => {
                     return (
                       <div
                         key={cat}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.85rem 1rem',
-                          backgroundColor: '#f8fafc',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border-subtle)',
-                        }}
+                        className="settings-item-row"
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <span style={{ fontWeight: 600, color: 'var(--text-navy)', fontSize: '0.92rem' }}>
@@ -747,15 +730,7 @@ export const SettingsPage: React.FC = () => {
                     {customFields.map((field) => (
                       <div
                         key={field.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.85rem 1rem',
-                          backgroundColor: '#f8fafc',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border-subtle)',
-                        }}
+                        className="settings-item-row"
                       >
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

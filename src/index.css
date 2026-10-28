@@ -298,61 +298,38 @@ button, input, select, textarea {
 
 /* Sidebar Footer */
 .sidebar-footer {
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   border-top: 1px solid var(--border-subtle);
   background-color: #fafbfc;
 }
 
-.system-status-card {
+.sidebar-logout-btn {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background-color: #ffffff;
-  border: 1px solid var(--border-subtle);
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
   border-radius: var(--radius-md);
-}
-
-.status-dot-pulse {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  background-color: #10b981;
-  border-radius: 50%;
-}
-
-.status-dot-pulse::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  left: -3px;
-  right: -3px;
-  bottom: -3px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(16, 185, 129, 0.4);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.6); opacity: 0; }
-  100% { transform: scale(1); opacity: 0; }
-}
-
-.status-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.status-title {
-  font-size: 0.78rem;
+  border: 1px solid var(--border-subtle);
+  background-color: #ffffff;
+  color: #dc2626;
+  font-size: 0.82rem;
   font-weight: 600;
-  color: var(--text-navy);
+  cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
-.status-meta {
-  font-size: 0.68rem;
-  color: var(--text-muted);
+.sidebar-logout-btn:hover {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+  box-shadow: var(--shadow-xs);
+}
+
+.sidebar-logout-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 /* ==========================================================================
@@ -502,6 +479,17 @@ button, input, select, textarea {
   color: var(--text-navy);
 }
 
+.header-icon-btn.active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+
+.header-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
 .header-icon-badge {
   position: absolute;
   top: 7px;
@@ -526,9 +514,16 @@ button, input, select, textarea {
   transition: all var(--transition-fast);
 }
 
-.user-profile-btn:hover {
+.user-profile-btn:hover,
+.user-profile-btn.active {
   border-color: var(--border-medium);
   box-shadow: var(--shadow-sm);
+  background-color: var(--bg-surface-hover);
+}
+
+.user-profile-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
 .user-avatar-circle {
@@ -1311,6 +1306,137 @@ button, input, select, textarea {
   padding: 0.15rem 0.25rem;
 }
 
+/* Header Notification System */
+.header-notification-container {
+  position: relative;
+}
+
+.header-notification-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: calc(100vw - 1.5rem);
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-dropdown);
+  z-index: 50;
+  animation: scaleIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.notification-dropdown-header {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+}
+
+.notification-dropdown-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-dropdown-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-navy);
+}
+
+.notification-dropdown-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: #f1f5f9;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.notification-dropdown-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.notification-dropdown-close:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-navy);
+}
+
+.notification-dropdown-body {
+  padding: 1.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #ffffff;
+}
+
+.notification-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.notification-empty-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--primary-border);
+}
+
+.notification-empty-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-navy);
+  margin-bottom: 0.35rem;
+}
+
+.notification-empty-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  max-width: 250px;
+}
+
+.notification-dropdown-footer {
+  padding: 0.65rem 1rem;
+  background-color: #f8fafc;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-dropdown-status {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
 .header-profile-dropdown {
   position: absolute;
   top: calc(100% + 8px);
@@ -1392,6 +1518,76 @@ button, input, select, textarea {
 .profile-dropdown-item.text-danger:hover {
   background-color: #fef2f2;
   color: #b91c1c;
+}
+
+/* Settings Page Enhanced Styles */
+.settings-tab-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  text-align: left;
+  background-color: transparent;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-tab-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-navy);
+}
+
+.settings-tab-btn.active {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+  border-color: var(--primary-border);
+  box-shadow: var(--shadow-xs);
+}
+
+.settings-tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.settings-save-btn {
+  padding: 0.65rem 1.35rem !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25) !important;
+}
+
+.settings-save-btn:hover {
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.35) !important;
+  transform: translateY(-1px);
+}
+
+.settings-save-btn:active {
+  transform: translateY(0);
+}
+
+.settings-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.15rem;
+  background-color: #ffffff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  transition: all var(--transition-fast);
+}
+
+.settings-item-row:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-xs);
+  background-color: #fafbfc;
 }
 
 /* ==========================================================================
@@ -1538,6 +1734,12 @@ button, input, select, textarea {
 }
 
 @media (max-width: 640px) {
+  .header-notification-dropdown {
+    right: -45px;
+    width: 290px;
+    max-width: calc(100vw - 1rem);
+  }
+
   .header-role-label {
     display: none;
   }
@@ -1610,6 +1812,12 @@ button, input, select, textarea {
 }
 
 @media (max-width: 480px) {
+  .header-notification-dropdown {
+    right: -45px;
+    width: 285px;
+    max-width: calc(100vw - 1rem);
+  }
+
   .app-header {
     padding: 0 0.75rem;
     height: 56px;
@@ -1683,6 +1891,12 @@ button, input, select, textarea {
 }
 
 @media (max-width: 360px) {
+  .header-notification-dropdown {
+    right: -36px;
+    width: 265px;
+    max-width: calc(100vw - 0.75rem);
+  }
+
   .app-header {
     padding: 0 0.5rem;
   }

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Search, Bell, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, Search, Bell, ChevronDown, LogOut, CheckCheck, X } from 'lucide-react';
 import { useDemoRole } from '../../services/roleStorage';
 import { logoutLocalSession } from '../../services/authStorage';
 
@@ -12,7 +12,48 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { role, setDemoRole } = useDemoRole();
+  const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on outside click or Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNotificationMenuOpen(false);
+        setProfileMenuOpen(false);
+      }
+    };
+
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (
+        notificationContainerRef.current &&
+        !notificationContainerRef.current.contains(e.target as Node)
+      ) {
+        setNotificationMenuOpen(false);
+      }
+      if (
+        profileContainerRef.current &&
+        !profileContainerRef.current.contains(e.target as Node)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    };
+
+    if (notificationMenuOpen || profileMenuOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('mousedown', handlePointerDown);
+      document.addEventListener('touchstart', handlePointerDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+    };
+  }, [notificationMenuOpen, profileMenuOpen]);
 
   // Helper to resolve title from pathname
   const getRouteInfo = (pathname: string) => {
@@ -106,29 +147,85 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           </select>
         </div>
 
-        {/* Notification Bell */}
-        <button
-          type="button"
-          className="header-icon-btn"
-          aria-label="Notifications"
-          title="Notifications"
-        >
-          <Bell size={18} />
-          <span className="header-icon-badge" />
-        </button>
+        {/* Notification Bell with Functional Dropdown */}
+        <div ref={notificationContainerRef} className="header-notification-container">
+          <button
+            type="button"
+            className={`header-icon-btn ${notificationMenuOpen ? 'active' : ''}`}
+            aria-label="Notifications"
+            aria-haspopup="dialog"
+            aria-expanded={notificationMenuOpen}
+            title="Notifications"
+            onClick={() => {
+              setNotificationMenuOpen((prev) => !prev);
+              setProfileMenuOpen(false);
+            }}
+          >
+            <Bell size={18} />
+          </button>
+
+          {notificationMenuOpen && (
+            <div
+              className="header-notification-dropdown"
+              role="dialog"
+              aria-label="Notifications panel"
+              aria-modal="false"
+            >
+              <div className="notification-dropdown-header">
+                <div className="notification-dropdown-title-wrap">
+                  <span className="notification-dropdown-title">Notifications</span>
+                  <span className="notification-dropdown-badge">0 unread</span>
+                </div>
+                <button
+                  type="button"
+                  className="notification-dropdown-close"
+                  aria-label="Close notifications panel"
+                  onClick={() => setNotificationMenuOpen(false)}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="notification-dropdown-body">
+                <div className="notification-empty-state">
+                  <div className="notification-empty-icon" aria-hidden="true">
+                    <Bell size={24} strokeWidth={1.8} />
+                  </div>
+                  <h4 className="notification-empty-title">You're all caught up</h4>
+                  <p className="notification-empty-desc">
+                    No new notifications at this time. System updates and customer alerts will appear here.
+                  </p>
+                </div>
+              </div>
+
+              <div className="notification-dropdown-footer">
+                <span className="notification-dropdown-status">
+                  <CheckCheck size={13} style={{ color: '#10b981' }} />
+                  Local system notifications
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* User Profile / Avatar with Viewport-Safe Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div ref={profileContainerRef} style={{ position: 'relative' }}>
           <div
-            className="user-profile-btn"
+            className={`user-profile-btn ${profileMenuOpen ? 'active' : ''}`}
             role="button"
             tabIndex={0}
+            aria-haspopup="menu"
+            aria-expanded={profileMenuOpen}
             title={`Current User (${role} Role)`}
-            onClick={() => setProfileMenuOpen((prev) => !prev)}
+            onClick={() => {
+              setProfileMenuOpen((prev) => !prev);
+              setNotificationMenuOpen(false);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 setProfileMenuOpen((prev) => !prev);
+                setNotificationMenuOpen(false);
               }
             }}
           >
@@ -143,63 +240,42 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           </div>
 
           {profileMenuOpen && (
-            <>
-              <div
-                style={{ position: 'fixed', inset: 0, zIndex: 45 }}
-                onClick={() => setProfileMenuOpen(false)}
-                aria-hidden="true"
-              />
-              <div className="header-profile-dropdown" role="menu">
-                <div className="profile-dropdown-header">
-                  <div className="profile-dropdown-name">
-                    {role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}
-                  </div>
-                  <div className="profile-dropdown-email">
-                    {role === 'Admin' ? 'admin@door2life.local' : 'operator@door2life.local'}
-                  </div>
-                  <div className="profile-dropdown-badge">{role} Access</div>
+            <div className="header-profile-dropdown" role="menu">
+              <div className="profile-dropdown-header">
+                <div className="profile-dropdown-name">
+                  {role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}
                 </div>
-                <div className="profile-dropdown-divider" />
-                <button
-                  type="button"
-                  className="profile-dropdown-item"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    navigate(role === 'Admin' ? '/settings' : '/customers');
-                  }}
-                >
-                  {role === 'Admin' ? 'System Settings' : 'Customer Directory'}
-                </button>
-                <button
-                  type="button"
-                  className="profile-dropdown-item text-danger"
-                  onClick={() => {
-                    setProfileMenuOpen(false);
-                    logoutLocalSession();
-                    navigate('/login');
-                  }}
-                >
-                  Sign Out
-                </button>
+                <div className="profile-dropdown-email">
+                  {role === 'Admin' ? 'admin@door2life.local' : 'operator@door2life.local'}
+                </div>
+                <div className="profile-dropdown-badge">{role} Access</div>
               </div>
-            </>
+              <div className="profile-dropdown-divider" />
+              <button
+                type="button"
+                className="profile-dropdown-item"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate(role === 'Admin' ? '/settings' : '/customers');
+                }}
+              >
+                {role === 'Admin' ? 'System Settings' : 'Customer Directory'}
+              </button>
+              <button
+                type="button"
+                className="profile-dropdown-item text-danger"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  logoutLocalSession();
+                  navigate('/login');
+                }}
+              >
+                <LogOut size={14} />
+                <span>Sign Out</span>
+              </button>
+            </div>
           )}
         </div>
-
-        {/* Sign Out Action Button */}
-        <button
-          type="button"
-          className="header-icon-btn"
-          aria-label="Sign Out"
-          title="Sign Out of Session"
-          onClick={() => {
-            logoutLocalSession();
-            navigate('/login');
-          }}
-          style={{ color: '#dc2626' }}
-        >
-          <LogOut size={17} />
-        </button>
       </div>
     </header>
   );
