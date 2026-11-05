@@ -78,8 +78,14 @@ export const DashboardPage: React.FC = () => {
   const categoryStats = useMemo(() => {
     const counts: Record<string, number> = {};
     customers.forEach((c) => {
-      const cat = c.category || 'General Customer';
-      counts[cat] = (counts[cat] || 0) + 1;
+      if (Array.isArray(c.categories) && c.categories.length > 0) {
+        c.categories.forEach((cat) => {
+          counts[cat] = (counts[cat] || 0) + 1;
+        });
+      } else {
+        const cat = c.category || 'General Customer';
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
     });
     return Object.entries(counts)
       .map(([cat, count]) => ({

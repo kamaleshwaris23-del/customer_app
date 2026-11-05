@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Search, Bell, ChevronDown, LogOut, CheckCheck, X } from 'lucide-react';
-import { useDemoRole } from '../../services/roleStorage';
-import { logoutLocalSession } from '../../services/authStorage';
+import { useAuthSession } from '../../services/authService';
+import { ROLE_LABELS } from '../../types/auth';
 
 interface HeaderProps {
   onToggleMobileMenu: () => void;
@@ -11,7 +11,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role, setDemoRole } = useDemoRole();
+  const { user, role, logout } = useAuthSession();
   const [notificationMenuOpen, setNotificationMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -57,7 +57,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
 
   // Helper to resolve title from pathname
   const getRouteInfo = (pathname: string) => {
-    // Normalize trailing slash (except root '/')
     const normalizedPath =
       pathname.length > 1 && pathname.endsWith('/')
         ? pathname.slice(0, -1)
@@ -75,17 +74,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
       case '/welcome':
         return { title: 'Welcome Guide', category: 'Overview' };
       case '/dashboard':
-        return { title: 'Dashboard', category: 'Overview' };
+        return { title: role === 'team_member' ? 'My Dashboard' : 'Dashboard', category: 'Overview' };
       case '/customers':
-        return { title: 'Customer Directory', category: 'Data Collection' };
+        return { title: role === 'team_member' ? 'My Customers' : 'Customer Directory', category: 'Data Collection' };
       case '/add-customer':
         return { title: 'Add New Customer', category: 'Data Collection' };
       case '/follow-ups':
-        return { title: 'Follow-ups & Reminders', category: 'Workflow' };
+        return { title: role === 'team_member' ? 'My Follow-ups' : 'Follow-ups & Reminders', category: 'Workflow' };
+      case '/audit-logs':
+        return { title: role === 'super_admin' ? 'Security Audit Logs' : 'My Activity History', category: 'Security' };
       case '/import-export':
         return { title: 'Import / Export Hub', category: 'Tools' };
       case '/team':
-        return { title: 'Team Members', category: 'Administration' };
+        return { title: role === 'super_admin' ? 'Team Management' : 'Team Overview', category: 'Administration' };
       case '/settings':
         return { title: 'System Settings', category: 'Administration' };
       default:
@@ -94,6 +95,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   };
 
   const routeInfo = getRouteInfo(location.pathname);
+
+  // Compute initials
+  const initials = (user?.full_name || 'User')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s[0].toUpperCase())
+    .join('') || 'U';
+
+  const roleLabel = role ? ROLE_LABELS[role] : 'Team Member';
 
   return (
     <header className="app-header">
@@ -115,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         </div>
       </div>
 
-      {/* Right: Search, Demo Role Switcher, Notifications, Avatar */}
+      {/* Right: Search, Notifications, User Avatar */}
       <div className="header-right">
         {/* Search input */}
         <div className="header-search-wrap">
@@ -125,26 +136,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           <input
             type="text"
             className="header-search-input"
-            placeholder="Search customers, ID, phone..."
+            placeholder="Search records..."
             aria-label="Search records"
           />
-        </div>
-
-        {/* Demo Role Selector Widget */}
-        <div
-          className="header-role-widget"
-          title="Demo Role Simulator (UI permissions only — not secure authentication)"
-        >
-          <span className="header-role-label">Demo Role:</span>
-          <select
-            className="form-select header-role-select"
-            value={role}
-            onChange={(e) => setDemoRole(e.target.value as any)}
-            aria-label="Demo role selector"
-          >
-            <option value="Admin">Admin</option>
-            <option value="Team Member">Team Member</option>
-          </select>
         </div>
 
         {/* Notification Bell with Functional Dropdown */}
@@ -193,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                   </div>
                   <h4 className="notification-empty-title">You're all caught up</h4>
                   <p className="notification-empty-desc">
-                    No new notifications at this time. System updates and customer alerts will appear here.
+                    No new notifications at this time. Security alerts and customer updates will appear here.
                   </p>
                 </div>
               </div>
@@ -201,14 +195,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               <div className="notification-dropdown-footer">
                 <span className="notification-dropdown-status">
                   <CheckCheck size={13} style={{ color: '#10b981' }} />
-                  Local system notifications
+                  System Notifications
                 </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* User Profile / Avatar with Viewport-Safe Dropdown */}
+        {/* Authenticated User Profile with Viewport-Safe Dropdown */}
         <div ref={profileContainerRef} style={{ position: 'relative' }}>
           <div
             className={`user-profile-btn ${profileMenuOpen ? 'active' : ''}`}
@@ -216,7 +210,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             tabIndex={0}
             aria-haspopup="menu"
             aria-expanded={profileMenuOpen}
-            title={`Current User (${role} Role)`}
+            title={`${user?.full_name || 'User'} (${roleLabel})`}
             onClick={() => {
               setProfileMenuOpen((prev) => !prev);
               setNotificationMenuOpen(false);
@@ -230,11 +224,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             }}
           >
             <div className="user-avatar-circle">
-              <span>{role === 'Admin' ? 'SJ' : 'TM'}</span>
+              <span>{initials}</span>
             </div>
             <div className="user-details">
-              <span className="user-name">{role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}</span>
-              <span className="user-role">{role} (Demo)</span>
+              <span className="user-name">{user?.full_name || 'Authenticated User'}</span>
+              <span className="user-role">{roleLabel}</span>
             </div>
             <ChevronDown size={14} color="#64748b" />
           </div>
@@ -243,30 +237,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
             <div className="header-profile-dropdown" role="menu">
               <div className="profile-dropdown-header">
                 <div className="profile-dropdown-name">
-                  {role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'}
+                  {user?.full_name || 'User Profile'}
                 </div>
                 <div className="profile-dropdown-email">
-                  {role === 'Admin' ? 'admin@door2life.local' : 'operator@door2life.local'}
+                  {user?.email || 'user@door2life.local'}
                 </div>
-                <div className="profile-dropdown-badge">{role} Access</div>
+                <div className="profile-dropdown-badge">{roleLabel}</div>
               </div>
               <div className="profile-dropdown-divider" />
               <button
                 type="button"
-                className="profile-dropdown-item"
-                onClick={() => {
-                  setProfileMenuOpen(false);
-                  navigate(role === 'Admin' ? '/settings' : '/customers');
-                }}
-              >
-                {role === 'Admin' ? 'System Settings' : 'Customer Directory'}
-              </button>
-              <button
-                type="button"
                 className="profile-dropdown-item text-danger"
-                onClick={() => {
+                onClick={async () => {
                   setProfileMenuOpen(false);
-                  logoutLocalSession();
+                  await logout();
                   navigate('/login');
                 }}
               >

@@ -21,9 +21,11 @@ import { PageHeader } from '../components/common/PageHeader';
 import { Card, CardHeader, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge, type BadgeVariant } from '../components/common/Badge';
-import { getStoredCustomerById } from '../services/customerStorage';
+import { getStoredCustomerById, deleteCustomer } from '../services/customerStorage';
 import { useTeamMembers } from '../services/teamStorage';
 import { useSettings } from '../services/settingsStorage';
+import { useAuthSession } from '../services/authService';
+import { recordAuditLog } from '../services/auditStorage';
 import {
   getFollowUpsByCustomerId,
   addFollowUp,
@@ -62,8 +64,9 @@ export const CustomerProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { activeMembers } = useTeamMembers();
   const { settings } = useSettings();
+  const { user, role, isSuperAdmin, isTeamMember } = useAuthSession();
 
-  // Read customer directly from localStorage - works across browser refresh!
+  // Read customer directly from storage - works across browser refresh!
   const customer = id ? getStoredCustomerById(id) : null;
 
   // Local state for linked follow-ups to re-render reactively on changes
@@ -72,6 +75,7 @@ export const CustomerProfilePage: React.FC = () => {
   });
 
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Follow-up Modal State
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -116,6 +120,49 @@ export const CustomerProfilePage: React.FC = () => {
               </p>
               <Button variant="primary" icon={<ArrowLeft size={16} />} onClick={() => navigate('/customers')}>
                 Back to Customer Directory
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Team Member Access Restriction: can only view assigned or created customer profiles
+  const isAssigned =
+    !isTeamMember ||
+    customer.assignedAgentId === user?.id ||
+    customer.assigned_agent_id === user?.id ||
+    customer.createdBy === user?.id ||
+    customer.created_by === user?.id ||
+    (customer.assignedAgentName && customer.assignedAgentName === user?.full_name);
+
+  if (!isAssigned) {
+    return (
+      <div>
+        <PageHeader
+          title="Access Restricted"
+          description="You do not have permission to view customer records assigned to other team members."
+          actions={
+            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={() => navigate('/customers')}>
+              Back to My Customers
+            </Button>
+          }
+        />
+        <div style={{ maxWidth: '640px', margin: '2rem auto' }}>
+          <Card>
+            <div className="empty-state">
+              <div className="empty-state-icon" style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}>
+                <AlertCircle size={32} />
+              </div>
+              <h2 className="empty-state-title" style={{ fontSize: '1.4rem' }}>
+                Permission Denied
+              </h2>
+              <p className="empty-state-text">
+                Team Members can only access customer records that are assigned to them.
+              </p>
+              <Button variant="primary" icon={<ArrowLeft size={16} />} onClick={() => navigate('/customers')}>
+                Back to My Customers
               </Button>
             </div>
           </Card>
@@ -218,6 +265,16 @@ export const CustomerProfilePage: React.FC = () => {
             >
               Edit Profile
             </Button>
+            {isSuperAdmin && (
+              <Button
+                variant="secondary"
+                style={{ color: '#ef4444', borderColor: '#fca5a5' }}
+                icon={<Trash2 size={16} />}
+                onClick={() => setIsDeleteModalOpen(true)}
+              >
+                Delete Profile
+              </Button>
+            )}
           </div>
         }
       />
@@ -774,6 +831,64 @@ export const CustomerProfilePage: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Super Admin Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="ui-modal-overlay" onClick={() => setIsDeleteModalOpen(false)}>
+          <div
+            className="ui-modal-container"
+            style={{ maxWidth: '480px' }}
+            onClick={(e) => e.stopPropagation()}
+            role="alertdialog"
+            aria-modal="true"
+          >
+            <div className="ui-modal-header" style={{ borderBottomColor: '#fecaca' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <h3 className="ui-modal-title" style={{ color: '#991b1b' }}>
+                  Delete Customer Record
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="ui-modal-close"
+                onClick={() => setIsDeleteModalOpen(false)}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="ui-modal-body">
+              <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                Are you sure you want to permanently delete customer <strong>{customer.fullName}</strong> ({customer.id})? This action is irreversible.
+              </p>
+            </div>
+            <div className="ui-modal-footer">
+              <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
+                onClick={async () => {
+                  deleteCustomer(customer.id, role || undefined);
+                  await recordAuditLog({
+                    userId: user?.id,
+                    userEmail: user?.email,
+                    userRole: role || undefined,
+                    action: 'customer_delete',
+                    entityType: 'customers',
+                    entityId: customer.id,
+                    details: { fullName: customer.fullName },
+                  });
+                  navigate('/customers');
+                }}
+              >
+                Confirm Delete
+              </Button>
+            </div>
           </div>
         </div>
       )}

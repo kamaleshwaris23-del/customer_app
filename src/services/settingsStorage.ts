@@ -186,7 +186,11 @@ export function getCategories(): string[] {
  */
 export function isCategoryInUse(categoryName: string): { inUse: boolean; count: number } {
   const customers = getStoredCustomers();
-  const count = customers.filter((c) => c.category === categoryName).length;
+  const count = customers.filter(
+    (c) =>
+      c.category === categoryName ||
+      (Array.isArray(c.categories) && c.categories.includes(categoryName as any))
+  ).length;
   return { inUse: count > 0, count };
 }
 
@@ -241,9 +245,27 @@ export function updateCategory(
   const customers = getStoredCustomers();
   let affectedCount = 0;
   const updatedCustomers = customers.map((c) => {
+    let changed = false;
+    let newCategory = c.category;
+    let newCategories = c.categories;
+
     if (c.category === (oldName as any)) {
+      newCategory = trimmedNew as any;
+      changed = true;
+    }
+    if (Array.isArray(c.categories) && c.categories.includes(oldName as any)) {
+      newCategories = c.categories.map((cat) => (cat === (oldName as any) ? (trimmedNew as any) : cat));
+      changed = true;
+    }
+
+    if (changed) {
       affectedCount++;
-      return { ...c, category: trimmedNew as any, updatedAt: new Date().toISOString() };
+      return {
+        ...c,
+        category: newCategory,
+        categories: newCategories,
+        updatedAt: new Date().toISOString(),
+      };
     }
     return c;
   });
@@ -284,9 +306,28 @@ export function deleteCategory(
   if (inUse && reassignTo) {
     const customers = getStoredCustomers();
     const updatedCustomers = customers.map((c) => {
+      let changed = false;
+      let newCategory = c.category;
+      let newCategories = c.categories;
+
       if (c.category === (name as any)) {
+        newCategory = reassignTo as any;
+        changed = true;
+      }
+      if (Array.isArray(c.categories) && c.categories.includes(name as any)) {
+        newCategories = c.categories.map((cat) => (cat === (name as any) ? (reassignTo as any) : cat));
+        newCategories = Array.from(new Set(newCategories));
+        changed = true;
+      }
+
+      if (changed) {
         affectedCount++;
-        return { ...c, category: reassignTo as any, updatedAt: new Date().toISOString() };
+        return {
+          ...c,
+          category: newCategory,
+          categories: newCategories,
+          updatedAt: new Date().toISOString(),
+        };
       }
       return c;
     });

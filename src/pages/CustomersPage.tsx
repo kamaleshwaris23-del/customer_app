@@ -34,7 +34,8 @@ import {
   exportCustomersToJSON,
 } from '../services/customerStorage';
 import { useSettings } from '../services/settingsStorage';
-import { useDemoRole } from '../services/roleStorage';
+import { useAuthSession } from '../services/authService';
+import { recordAuditLog } from '../services/auditStorage';
 
 const CATEGORY_LIST: CustomerCategory[] = [
   'Business Owner',
@@ -78,10 +79,27 @@ const getCategoryBadgeVariant = (category: CustomerCategory): BadgeVariant => {
 
 export const CustomersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { customers, totalCount } = useCustomers();
+  const { customers } = useCustomers();
   const { categories: dynamicCategories } = useSettings();
-  const { isAdmin } = useDemoRole();
+  const { user, role, isSuperAdmin, isTeamMember } = useAuthSession();
   const categoryOptions = dynamicCategories && dynamicCategories.length > 0 ? dynamicCategories : CATEGORY_LIST;
+
+  // Scope customers by role: Team Members only see assigned or created customers
+  const accessibleCustomers = useMemo(() => {
+    if (isTeamMember && user?.id) {
+      return customers.filter(
+        (c) =>
+          c.assignedAgentId === user.id ||
+          c.assigned_agent_id === user.id ||
+          c.createdBy === user.id ||
+          c.created_by === user.id ||
+          (c.assignedAgentName && c.assignedAgentName === user.full_name)
+      );
+    }
+    return customers;
+  }, [customers, isTeamMember, user]);
+
+  const totalCount = accessibleCustomers.length;
 
   // Search & Filtering State
   const [searchTerm, setSearchTerm] = useState('');
@@ -137,7 +155,7 @@ export const CustomersPage: React.FC = () => {
     const query = searchTerm.toLowerCase().trim();
     const cleanPhoneQuery = query.replace(/^\+91[\s-]*/, '').replace(/[\s-]/g, '');
 
-    const filtered = customers.filter((c) => {
+    const filtered = accessibleCustomers.filter((c) => {
       const cleanStoredContact = c.primaryContact.replace(/^\+91[\s-]*/, '').replace(/[\s-]/g, '');
 
       const matchesSearch =
@@ -148,7 +166,9 @@ export const CustomersPage: React.FC = () => {
         (cleanPhoneQuery.length > 0 && cleanStoredContact.includes(cleanPhoneQuery));
 
       const matchesCategory =
-        categoryFilter === 'All' || c.category === categoryFilter;
+        categoryFilter === 'All' ||
+        c.category === categoryFilter ||
+        (Array.isArray(c.categories) && c.categories.includes(categoryFilter as CustomerCategory));
 
       const matchesGender = genderFilter === 'All' || c.gender === genderFilter;
 
@@ -172,7 +192,7 @@ export const CustomersPage: React.FC = () => {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
-  }, [customers, searchTerm, categoryFilter, genderFilter, sortField, sortDirection]);
+  }, [accessibleCustomers, searchTerm, categoryFilter, genderFilter, sortField, sortDirection]);
 
   // Pagination calculation
   const totalRecords = sortedAndFilteredCustomers.length;
@@ -182,23 +202,49 @@ export const CustomersPage: React.FC = () => {
   const endIndex = Math.min(startIndex + pageSize, totalRecords);
   const paginatedCustomers = sortedAndFilteredCustomers.slice(startIndex, endIndex);
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!customerToDelete) return;
-    const deleted = deleteCustomer(customerToDelete.id);
+    if (!isSuperAdmin) {
+      setActionNotice('Permission Denied: Only Super Admin can delete customer records.');
+      setCustomerToDelete(null);
+      return;
+    }
+    const deleted = deleteCustomer(customerToDelete.id, role || undefined);
     if (deleted) {
+      await recordAuditLog({
+        userId: user?.id,
+        userEmail: user?.email,
+        userRole: role || undefined,
+        action: 'customer_delete',
+        entityType: 'customers',
+        entityId: customerToDelete.id,
+        details: { fullName: customerToDelete.fullName },
+      });
       setActionNotice(`Customer ${customerToDelete.fullName} (${customerToDelete.id}) was permanently deleted.`);
       setTimeout(() => setActionNotice(null), 4000);
     }
     setCustomerToDelete(null);
   };
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
+    if (!isSuperAdmin) {
+      setActionNotice('Permission Denied: Full database export is restricted to Super Admin.');
+      return;
+    }
     if (customers.length === 0) {
       alert('There are no saved customer records to export. Add a customer first.');
       return;
     }
     const result = exportCustomersToJSON();
     if (result.success) {
+      await recordAuditLog({
+        userId: user?.id,
+        userEmail: user?.email,
+        userRole: role || undefined,
+        action: 'export',
+        entityType: 'customers',
+        details: { recordCount: result.count, format: 'json' },
+      });
       setActionNotice(`Exported ${result.count} customer records to JSON file.`);
       setTimeout(() => setActionNotice(null), 4000);
     }
@@ -232,18 +278,24 @@ export const CustomersPage: React.FC = () => {
   return (
     <div>
       <PageHeader
-        title="Customers"
-        description="Search, view, manage, and export verified customer records with real browser-side persistence."
+        title={isTeamMember ? 'My Assigned Customers' : 'Customer Directory'}
+        description={
+          isTeamMember
+            ? 'Manage and follow up on customer profiles assigned to your account.'
+            : 'Search, view, manage, and assign verified customer records with real data persistence.'
+        }
         actions={
           <>
-            <Button
-              variant="secondary"
-              icon={<Download size={16} />}
-              onClick={handleExportJSON}
-              title="Download saved customer records as a .json file"
-            >
-              Export JSON
-            </Button>
+            {isSuperAdmin && (
+              <Button
+                variant="secondary"
+                icon={<Download size={16} />}
+                onClick={handleExportJSON}
+                title="Download saved customer records as a .json file (Super Admin Only)"
+              >
+                Export JSON
+              </Button>
+            )}
             <Button
               variant="primary"
               icon={<UserPlus size={16} />}
@@ -531,9 +583,29 @@ export const CustomersPage: React.FC = () => {
 
                       {/* Category Badge & Program Tags */}
                       <td>
-                        <Badge variant={getCategoryBadgeVariant(customer.category)}>
-                          {customer.category}
-                        </Badge>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                          {customer.categories && customer.categories.length > 0 ? (
+                            customer.categories.map((cat) => (
+                              <Badge key={cat} variant={getCategoryBadgeVariant(cat)}>
+                                {cat}
+                                {(cat === 'Others' || cat === 'Other') && customer.customCategory && (
+                                  <span style={{ marginLeft: '3px', opacity: 0.9 }}>
+                                    ({customer.customCategory})
+                                  </span>
+                                )}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge variant={getCategoryBadgeVariant(customer.category)}>
+                              {customer.category}
+                              {(customer.category === 'Others' || customer.category === 'Other') && customer.customCategory && (
+                                <span style={{ marginLeft: '3px', opacity: 0.9 }}>
+                                  ({customer.customCategory})
+                                </span>
+                              )}
+                            </Badge>
+                          )}
+                        </div>
                         {(customer.trainingRequired || customer.mentorshipRequired || customer.businessExpansion) && (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '4px' }}>
                             {customer.trainingRequired && (
@@ -595,13 +667,13 @@ export const CustomersPage: React.FC = () => {
                             onClick={() => navigate(`/customers/edit/${customer.id}`)}
                             aria-label={`Edit ${customer.fullName}`}
                           />
-                          {isAdmin && (
+                          {isSuperAdmin && (
                             <Button
                               variant="ghost"
                               size="sm"
                               style={{ color: '#ef4444' }}
                               icon={<Trash2 size={15} />}
-                              title="Delete Customer"
+                              title="Delete Customer (Super Admin Only)"
                               onClick={() => setCustomerToDelete(customer)}
                               aria-label={`Delete ${customer.fullName}`}
                             />
@@ -691,11 +763,24 @@ export const CustomersPage: React.FC = () => {
                   <h3 id="modal-customer-name" className="ui-modal-title">
                     {viewCustomer.fullName}
                   </h3>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem', alignItems: 'center' }}>
                     <Badge variant="primary">{viewCustomer.id}</Badge>
-                    <Badge variant={getCategoryBadgeVariant(viewCustomer.category)}>
-                      {viewCustomer.category}
-                    </Badge>
+                    {viewCustomer.categories && viewCustomer.categories.length > 0 ? (
+                      viewCustomer.categories.map((cat) => (
+                        <Badge key={cat} variant={getCategoryBadgeVariant(cat)}>
+                          {cat}
+                          {(cat === 'Others' || cat === 'Other') && viewCustomer.customCategory && (
+                            <span style={{ marginLeft: '0.35rem', opacity: 0.9 }}>
+                              ({viewCustomer.customCategory})
+                            </span>
+                          )}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant={getCategoryBadgeVariant(viewCustomer.category)}>
+                        {viewCustomer.category}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -728,9 +813,14 @@ export const CustomersPage: React.FC = () => {
                       <span className="detail-label">Occupation</span>
                       <span className="detail-value">{viewCustomer.occupation}</span>
                     </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Category</span>
-                      <span className="detail-value">{viewCustomer.category}</span>
+                    <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                      <span className="detail-label">Categories</span>
+                      <span className="detail-value">
+                        {viewCustomer.categories && viewCustomer.categories.length > 0
+                          ? viewCustomer.categories.join(', ')
+                          : viewCustomer.category}
+                        {viewCustomer.customCategory ? ` (${viewCustomer.customCategory})` : ''}
+                      </span>
                     </div>
                   </div>
                 </div>

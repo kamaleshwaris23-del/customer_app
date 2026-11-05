@@ -2,14 +2,18 @@ export type Gender = 'Female' | 'Male' | 'Prefer not to say';
 
 export type CustomerCategory =
   | 'Business Owner'
+  | 'Student'
+  | 'Job Seeker'
+  | 'Employee / Working Professional'
+  | 'Homemaker'
   | 'Aspiring Entrepreneur'
   | 'Entrepreneur'
-  | 'Student'
   | 'Working Professional'
   | 'Professional'
   | 'Self-employed'
   | 'Investor'
   | 'General Customer'
+  | 'Others'
   | 'Other'
   | (string & {});
 
@@ -24,16 +28,24 @@ export interface Customer {
   location?: string;
   occupation: string;
   category: CustomerCategory;
+  categories?: CustomerCategory[];
+  customCategory?: string;
   interests?: string;
   notes?: string;
   customFields?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
+  created_by?: string;
+  assignedAgentId?: string;
+  assigned_agent_id?: string;
+  assignedAgentName?: string;
 
   // Conditional Business & Enterprise Details
   businessName?: string;
   businessCategory?: string;
+  businessCategories?: string[];
+  customBusinessCategory?: string;
   businessServices?: string;
   businessLocation?: string;
   businessIdea?: string;
@@ -53,12 +65,16 @@ export interface CustomerFormData {
   location: string;
   occupation: string;
   category: CustomerCategory | '';
+  categories: CustomerCategory[];
+  customCategory: string;
   interests: string;
   notes: string;
 
   // Conditional Business Details
   businessName: string;
   businessCategory: string;
+  businessCategories: string[];
+  customBusinessCategory: string;
   businessServices: string;
   businessLocation: string;
   businessIdea: string;
@@ -67,6 +83,9 @@ export interface CustomerFormData {
   trainingRequired: boolean;
   mentorshipRequired: boolean;
   businessExpansion: boolean;
+
+  // Assignment
+  assignedAgentId?: string;
 }
 
 export interface CustomerFormErrors {
@@ -78,10 +97,14 @@ export interface CustomerFormErrors {
   location?: string;
   occupation?: string;
   category?: string;
+  categories?: string;
+  customCategory?: string;
   interests?: string;
   notes?: string;
   businessName?: string;
   businessCategory?: string;
+  businessCategories?: string;
+  customBusinessCategory?: string;
   general?: string;
 }
 

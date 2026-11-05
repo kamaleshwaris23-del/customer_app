@@ -1,22 +1,32 @@
 import { useState, useEffect } from 'react';
 import { setStoredRole, getStoredRole, type DemoRole } from './roleStorage.ts';
 import { getStoredTeamMembers } from './teamStorage.ts';
+import type { UserRole } from '../types/auth.ts';
 
 export const AUTH_STORAGE_KEY = 'door2life_session_v1';
 export const EVENT_AUTH_UPDATED = 'door2life_auth_updated';
 
 export interface AuthUser {
+  id?: string;
   email: string;
   name: string;
-  role: DemoRole;
+  role: DemoRole | UserRole;
   loginTime: string;
-  authType: 'local-session';
+  authType: 'local-session' | 'supabase';
 }
 
 /**
- * Demo Admin credentials for development and local testing only.
- * IMPORTANT: This demo login is strictly for local testing and offline prototype evaluation.
- * It is NOT secure authentication for a production deployment.
+ * Super Admin credentials for testing and bootstrap verification.
+ */
+export const SUPER_ADMIN_CREDENTIALS = {
+  email: 'superadmin@door2life.local',
+  password: 'D2L-Super-2026!',
+  name: 'System Super Admin',
+  role: 'super_admin' as const,
+};
+
+/**
+ * Demo Admin credentials for development and local testing.
  */
 export const DEMO_ADMIN_CREDENTIALS = {
   email: 'admin@door2life.local',
@@ -28,7 +38,12 @@ export const DEMO_ADMIN_CREDENTIALS = {
 /**
  * Known system credentials for local demo/testing authentication.
  */
-const SYSTEM_CREDENTIALS: Record<string, { password: string[]; name: string; role: DemoRole }> = {
+const SYSTEM_CREDENTIALS: Record<string, { password: string[]; name: string; role: DemoRole | UserRole }> = {
+  'superadmin@door2life.local': {
+    password: ['D2L-Super-2026!', 'superadmin123', 'door2life2026'],
+    name: 'System Super Admin',
+    role: 'super_admin',
+  },
   'admin@door2life.local': {
     password: ['D2L-Demo-2026!', 'demo1234', 'admin123', 'door2life2026'],
     name: 'Sarah Jenkins',
@@ -179,10 +194,27 @@ export const AUTH_BACKEND_REQUIREMENTS = {
  */
 export function getStoredSession(): AuthUser | null {
   try {
+    // 1. Check v2 auth session
+    const rawV2 = localStorage.getItem('door2life_auth_session_v2');
+    if (rawV2) {
+      const parsedV2 = JSON.parse(rawV2);
+      if (parsedV2 && parsedV2.user && parsedV2.user.email) {
+        return {
+          id: parsedV2.user.id,
+          email: parsedV2.user.email,
+          name: parsedV2.user.full_name,
+          role: parsedV2.user.role,
+          loginTime: parsedV2.loginTime || new Date().toISOString(),
+          authType: parsedV2.provider === 'supabase' ? 'supabase' : 'local-session',
+        };
+      }
+    }
+
+    // 2. Check legacy v1 session
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.email === 'string' && (parsed.role === 'Admin' || parsed.role === 'Team Member')) {
+    if (parsed && typeof parsed.email === 'string') {
       return parsed as AuthUser;
     }
     return null;
@@ -204,11 +236,11 @@ export function isAuthenticated(): boolean {
 export function loginLocalSession(
   email = 'admin@door2life.local',
   name = 'Sarah Jenkins',
-  role: DemoRole = 'Admin'
+  role: DemoRole | UserRole = 'Admin'
 ): AuthUser {
   const session: AuthUser = {
     email: email.trim() || 'admin@door2life.local',
-    name: name.trim() || (role === 'Admin' ? 'Sarah Jenkins' : 'Field Operator'),
+    name: name.trim() || (role === 'Admin' || role === 'super_admin' ? 'Sarah Jenkins' : 'Field Operator'),
     role,
     loginTime: new Date().toISOString(),
     authType: 'local-session',
@@ -217,7 +249,13 @@ export function loginLocalSession(
   try {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
     // Synchronize selected role with roleStorage
-    setStoredRole(role);
+    if (role === 'Admin' || role === 'Team Member') {
+      setStoredRole(role);
+    } else if (role === 'super_admin' || role === 'admin') {
+      setStoredRole('Admin');
+    } else {
+      setStoredRole('Team Member');
+    }
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(EVENT_AUTH_UPDATED, { detail: { session } }));
@@ -235,6 +273,7 @@ export function loginLocalSession(
 export function logoutLocalSession(): void {
   try {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('door2life_auth_session_v2');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(EVENT_AUTH_UPDATED, { detail: { session: null } }));
     }

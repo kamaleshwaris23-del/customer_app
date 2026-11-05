@@ -23,11 +23,12 @@ import {
   type TeamMember,
   type TeamMemberStatus,
 } from '../services/teamStorage';
-import { useDemoRole } from '../services/roleStorage';
+import { useAuthSession } from '../services/authService';
+import { recordAuditLog } from '../services/auditStorage';
 
 export const TeamMembersPage: React.FC = () => {
   const { team, activeCount } = useTeamMembers();
-  const { isAdmin } = useDemoRole();
+  const { user, role, isSuperAdmin, isAdmin } = useAuthSession();
 
   const [actionNotice, setActionNotice] = useState<string | null>(null);
 
@@ -81,6 +82,11 @@ export const TeamMembersPage: React.FC = () => {
       return;
     }
 
+    if (!isSuperAdmin) {
+      setFormError('Permission Denied: Only Super Admin can add or modify team accounts.');
+      return;
+    }
+
     if (memberToEdit) {
       const result = updateTeamMember(memberToEdit.id, {
         name: formName.trim(),
@@ -92,6 +98,15 @@ export const TeamMembersPage: React.FC = () => {
 
       if (result.success) {
         setMemberToEdit(null);
+        recordAuditLog({
+          userId: user?.id,
+          userEmail: user?.email,
+          userRole: role || undefined,
+          action: 'user_update',
+          entityType: 'team_members',
+          entityId: memberToEdit.id,
+          details: { name: formName.trim(), role: formRole.trim() },
+        });
         setActionNotice(`Updated profile for ${formName.trim()}.`);
         setTimeout(() => setActionNotice(null), 4000);
       } else {
@@ -108,6 +123,15 @@ export const TeamMembersPage: React.FC = () => {
 
       if (result.success && result.member) {
         setIsAddModalOpen(false);
+        recordAuditLog({
+          userId: user?.id,
+          userEmail: user?.email,
+          userRole: role || undefined,
+          action: 'user_create',
+          entityType: 'team_members',
+          entityId: result.member.id,
+          details: { name: result.member.name, role: result.member.role },
+        });
         setActionNotice(`Added ${result.member.name} (${result.member.id}) to staff directory.`);
         setTimeout(() => setActionNotice(null), 4000);
       } else {
@@ -118,7 +142,21 @@ export const TeamMembersPage: React.FC = () => {
 
   const handleDeleteConfirm = () => {
     if (!memberToDelete) return;
+    if (!isSuperAdmin) {
+      setActionNotice('Permission Denied: Only Super Admin can remove team accounts.');
+      setMemberToDelete(null);
+      return;
+    }
     deleteTeamMember(memberToDelete.id);
+    recordAuditLog({
+      userId: user?.id,
+      userEmail: user?.email,
+      userRole: role || undefined,
+      action: 'user_deactivate',
+      entityType: 'team_members',
+      entityId: memberToDelete.id,
+      details: { name: memberToDelete.name },
+    });
     setActionNotice(`Team member ${memberToDelete.name} was removed.`);
     setMemberToDelete(null);
     setTimeout(() => setActionNotice(null), 4000);
@@ -127,10 +165,14 @@ export const TeamMembersPage: React.FC = () => {
   return (
     <div>
       <PageHeader
-        title="Team Members"
-        description="Manage system access, regional field assignments, and staff profiles stored in browser LocalStorage."
+        title={isSuperAdmin ? 'Team Management' : 'Team Overview'}
+        description={
+          isSuperAdmin
+            ? 'Manage user access, role assignments, and team staff credentials across the organization.'
+            : 'Operational overview of team staff members, availability status, and customer allocations.'
+        }
         actions={
-          isAdmin ? (
+          isSuperAdmin ? (
             <Button variant="primary" icon={<UserPlus size={16} />} onClick={handleOpenAddModal}>
               Add Team Member
             </Button>
@@ -138,8 +180,8 @@ export const TeamMembersPage: React.FC = () => {
         }
       />
 
-      {/* Role Notice Banner if in Team Member demo role */}
-      {!isAdmin && (
+      {/* Role Notice Banner for Admin role */}
+      {isAdmin && !isSuperAdmin && (
         <div
           style={{
             padding: '0.85rem 1.25rem',
@@ -149,17 +191,13 @@ export const TeamMembersPage: React.FC = () => {
             marginBottom: '1.25rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            flexWrap: 'wrap',
+            gap: '0.65rem',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <ShieldAlert size={18} color="#2563eb" />
-            <span style={{ fontSize: '0.85rem', color: '#1e3a8a' }}>
-              <strong>Team Member Demo Mode:</strong> Viewing team staff is permitted. Adding, modifying, or deleting staff requires Admin role. Switch role to <strong>Admin</strong> in the top bar to test modifications.
-            </span>
-          </div>
+          <ShieldAlert size={18} color="#2563eb" />
+          <span style={{ fontSize: '0.85rem', color: '#1e3a8a' }}>
+            <strong>Admin Operational View:</strong> Staff performance and customer allocations are visible. User creation, role modifications, and account deactivations require Super Admin credentials.
+          </span>
         </div>
       )}
 
@@ -282,8 +320,8 @@ export const TeamMembersPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Action Buttons for Admin role */}
-              {isAdmin && (
+              {/* Action Buttons for Super Admin role */}
+              {isSuperAdmin && (
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-subtle)', justifyContent: 'flex-end' }}>
                   <Button
                     variant="ghost"

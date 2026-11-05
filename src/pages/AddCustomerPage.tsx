@@ -37,28 +37,28 @@ import {
 } from '../services/followUpStorage';
 import { useSettings } from '../services/settingsStorage';
 import { useTeamMembers } from '../services/teamStorage';
+import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
+import { useAuthSession } from '../services/authService';
+import { recordAuditLog } from '../services/auditStorage';
 
 const CATEGORY_OPTIONS: CustomerCategory[] = [
   'Business Owner',
+  'Student',
+  'Job Seeker',
+  'Employee / Working Professional',
+  'Homemaker',
   'Aspiring Entrepreneur',
   'Entrepreneur',
-  'Student',
   'Working Professional',
   'Professional',
   'Self-employed',
   'Investor',
   'General Customer',
-  'Other',
+  'Others',
 ];
 
-const isBusinessCategory = (category: string): boolean => {
-  return [
-    'Business Owner',
-    'Aspiring Entrepreneur',
-    'Entrepreneur',
-    'Self-employed',
-    'Investor',
-  ].includes(category);
+const isBusinessOwnerSelected = (categories: string[]): boolean => {
+  return categories.includes('Business Owner');
 };
 
 const BUSINESS_INDUSTRIES = [
@@ -77,7 +77,7 @@ const BUSINESS_INDUSTRIES = [
   'Automobile & Garage',
   'Handicrafts & Artisans',
   'Professional Services & Consulting',
-  'Other',
+  'Others',
 ];
 
 const STANDARD_INTERESTS = [
@@ -104,7 +104,10 @@ export const AddCustomerPage: React.FC = () => {
 
   const { settings } = useSettings();
   const { activeMembers } = useTeamMembers();
-  const dynamicCategories = settings.categories && settings.categories.length > 0 ? settings.categories : CATEGORY_OPTIONS;
+  const { user, role, isTeamMember } = useAuthSession();
+  const dynamicCategories = Array.from(
+    new Set([...CATEGORY_OPTIONS, ...(settings.categories || [])])
+  );
 
   // Determine if editing an existing customer
   const editId = params.id || searchParams.get('edit') || undefined;
@@ -112,12 +115,35 @@ export const AddCustomerPage: React.FC = () => {
   const existingCustomer = editId ? getStoredCustomerById(editId) : null;
   const isNotFound = isEditMode && !existingCustomer;
 
+  // Team Member Access Restriction: Team Members can only edit assigned or created customers
+  const isUnauthorizedEdit =
+    isEditMode &&
+    isTeamMember &&
+    existingCustomer &&
+    existingCustomer.assignedAgentId !== user?.id &&
+    existingCustomer.assigned_agent_id !== user?.id &&
+    existingCustomer.createdBy !== user?.id &&
+    existingCustomer.created_by !== user?.id &&
+    (!existingCustomer.assignedAgentName || existingCustomer.assignedAgentName !== user?.full_name);
+
   // Wizard Step State
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
 
   // Form Data State
   const [formData, setFormData] = useState<CustomerFormData>(() => {
     if (existingCustomer) {
+      const cats: CustomerCategory[] =
+        Array.isArray(existingCustomer.categories) && existingCustomer.categories.length > 0
+          ? existingCustomer.categories
+          : (existingCustomer.category ? [existingCustomer.category] : []);
+
+      const bizCats: string[] =
+        Array.isArray(existingCustomer.businessCategories) && existingCustomer.businessCategories.length > 0
+          ? existingCustomer.businessCategories
+          : (existingCustomer.businessCategory
+              ? existingCustomer.businessCategory.split(',').map((s) => s.trim()).filter(Boolean)
+              : []);
+
       return {
         fullName: existingCustomer.fullName,
         age: String(existingCustomer.age),
@@ -126,17 +152,22 @@ export const AddCustomerPage: React.FC = () => {
         email: existingCustomer.email || '',
         location: existingCustomer.location || '',
         occupation: existingCustomer.occupation,
-        category: existingCustomer.category,
+        category: existingCustomer.category || cats[0] || '',
+        categories: cats,
+        customCategory: existingCustomer.customCategory || '',
         interests: existingCustomer.interests || '',
         notes: existingCustomer.notes || '',
         businessName: existingCustomer.businessName || '',
-        businessCategory: existingCustomer.businessCategory || '',
+        businessCategory: existingCustomer.businessCategory || bizCats.join(', '),
+        businessCategories: bizCats,
+        customBusinessCategory: existingCustomer.customBusinessCategory || '',
         businessServices: existingCustomer.businessServices || '',
         businessLocation: existingCustomer.businessLocation || '',
         businessIdea: existingCustomer.businessIdea || '',
         trainingRequired: Boolean(existingCustomer.trainingRequired),
         mentorshipRequired: Boolean(existingCustomer.mentorshipRequired),
         businessExpansion: Boolean(existingCustomer.businessExpansion),
+        assignedAgentId: existingCustomer.assignedAgentId || existingCustomer.assigned_agent_id || '',
       };
     }
     return {
@@ -148,16 +179,21 @@ export const AddCustomerPage: React.FC = () => {
       location: '',
       occupation: '',
       category: '',
+      categories: [],
+      customCategory: '',
       interests: '',
       notes: '',
       businessName: '',
       businessCategory: '',
+      businessCategories: [],
+      customBusinessCategory: '',
       businessServices: '',
       businessLocation: '',
       businessIdea: '',
       trainingRequired: false,
       mentorshipRequired: false,
       businessExpansion: false,
+      assignedAgentId: '',
     };
   });
 
@@ -218,6 +254,43 @@ export const AddCustomerPage: React.FC = () => {
     }
   };
 
+  const handleCategoriesChange = (newSelected: string[]) => {
+    const typedSelected = newSelected as CustomerCategory[];
+    const hasOthers = typedSelected.includes('Others') || typedSelected.includes('Other');
+    setFormData((prev) => ({
+      ...prev,
+      categories: typedSelected,
+      category: typedSelected[0] || '',
+      // Deselecting Others immediately clears customCategory without leaving stale values
+      customCategory: hasOthers ? prev.customCategory : '',
+    }));
+
+    if (errors.categories || errors.category) {
+      setErrors((prev) => ({ ...prev, categories: undefined, category: undefined }));
+    }
+    if (!hasOthers && errors.customCategory) {
+      setErrors((prev) => ({ ...prev, customCategory: undefined }));
+    }
+  };
+
+  const handleBusinessCategoriesChange = (newSelected: string[]) => {
+    const hasOthers = newSelected.includes('Others') || newSelected.includes('Other');
+    setFormData((prev) => ({
+      ...prev,
+      businessCategories: newSelected,
+      businessCategory: newSelected.join(', '),
+      // Deselecting Others immediately clears customBusinessCategory without leaving stale values
+      customBusinessCategory: hasOthers ? prev.customBusinessCategory : '',
+    }));
+
+    if (errors.businessCategories || errors.businessCategory) {
+      setErrors((prev) => ({ ...prev, businessCategories: undefined, businessCategory: undefined }));
+    }
+    if (!hasOthers && errors.customBusinessCategory) {
+      setErrors((prev) => ({ ...prev, customBusinessCategory: undefined }));
+    }
+  };
+
   // Step 1 Validation
   const validateStep1 = (): boolean => {
     const newErrors: CustomerFormErrors = {};
@@ -267,10 +340,23 @@ export const AddCustomerPage: React.FC = () => {
   const validateStep2 = (): boolean => {
     const newErrors: CustomerFormErrors = {};
 
-    if (!formData.category) {
-      newErrors.category = 'Please select a customer category.';
-    } else if (!dynamicCategories.includes(formData.category as CustomerCategory)) {
-      newErrors.category = 'Invalid category selected.';
+    if (!formData.categories || formData.categories.length === 0) {
+      newErrors.categories = 'Please select at least one customer category.';
+      newErrors.category = 'Please select at least one customer category.';
+    }
+
+    const hasOthersCat = formData.categories.includes('Others') || formData.categories.includes('Other');
+    if (hasOthersCat && !formData.customCategory.trim()) {
+      newErrors.customCategory = 'Please specify your customer category.';
+    }
+
+    // If Business Owner is selected, validate enterprise details if applicable
+    if (formData.categories.includes('Business Owner')) {
+      const hasOthersBiz =
+        formData.businessCategories.includes('Others') || formData.businessCategories.includes('Other');
+      if (hasOthersBiz && !formData.customBusinessCategory.trim()) {
+        newErrors.customBusinessCategory = 'Please specify your business industry.';
+      }
     }
 
     // Validate any required custom fields
@@ -278,6 +364,12 @@ export const AddCustomerPage: React.FC = () => {
       for (const field of settings.customFields) {
         if (field.required && !customFieldValues[field.id]?.trim()) {
           newErrors.general = `Custom field "${field.label}" is required.`;
+          break;
+        }
+        const isFieldOther =
+          customFieldValues[field.id] === 'Others' || customFieldValues[field.id] === 'Other';
+        if (isFieldOther && !customFieldValues[`${field.id}_other`]?.trim()) {
+          newErrors.general = `Please specify custom value for "${field.label}".`;
           break;
         }
       }
@@ -347,6 +439,32 @@ export const AddCustomerPage: React.FC = () => {
     const phoneResult = validateIndianMobile(formData.primaryContact);
     const cleanContact = phoneResult.isValid ? phoneResult.normalized : formData.primaryContact.trim();
 
+    const isBizOwner = formData.categories.includes('Business Owner');
+    const primaryCategory = (formData.categories.length > 0
+      ? formData.categories[0]
+      : (formData.category || 'General Customer')) as CustomerCategory;
+    const bizCategoryStr = isBizOwner
+      ? (formData.businessCategories.length > 0
+          ? formData.businessCategories.join(', ')
+          : (formData.businessCategory.trim() || undefined))
+      : undefined;
+
+    let assignedId = formData.assignedAgentId || undefined;
+    let assignedName: string | undefined = undefined;
+
+    if (isTeamMember) {
+      if (!isEditMode) {
+        assignedId = user?.id;
+        assignedName = user?.full_name;
+      } else {
+        assignedId = existingCustomer?.assignedAgentId || existingCustomer?.assigned_agent_id;
+        assignedName = existingCustomer?.assignedAgentName;
+      }
+    } else if (assignedId) {
+      const member = activeMembers.find((m) => m.id === assignedId);
+      assignedName = member ? member.name : undefined;
+    }
+
     const payload = {
       fullName: formData.fullName.trim(),
       age: parseInt(String(formData.age), 10),
@@ -355,23 +473,44 @@ export const AddCustomerPage: React.FC = () => {
       email: formData.email.trim() || undefined,
       location: formData.location.trim() || undefined,
       occupation: formData.occupation.trim(),
-      category: formData.category as CustomerCategory,
+      category: primaryCategory,
+      categories: formData.categories.length > 0 ? formData.categories : [primaryCategory],
+      customCategory:
+        formData.categories.includes('Others') || formData.categories.includes('Other')
+          ? formData.customCategory.trim() || undefined
+          : undefined,
       interests: formData.interests.trim() || undefined,
       notes: formData.notes.trim() || undefined,
-      businessName: formData.businessName.trim() || undefined,
-      businessCategory: formData.businessCategory.trim() || undefined,
-      businessServices: formData.businessServices.trim() || undefined,
-      businessLocation: formData.businessLocation.trim() || undefined,
-      businessIdea: formData.businessIdea.trim() || undefined,
+      businessName: isBizOwner ? formData.businessName.trim() || undefined : undefined,
+      businessCategory: bizCategoryStr,
+      businessCategories: isBizOwner && formData.businessCategories.length > 0 ? formData.businessCategories : undefined,
+      customBusinessCategory:
+        isBizOwner && (formData.businessCategories.includes('Others') || formData.businessCategories.includes('Other'))
+          ? formData.customBusinessCategory.trim() || undefined
+          : undefined,
+      businessServices: isBizOwner ? formData.businessServices.trim() || undefined : undefined,
+      businessLocation: isBizOwner ? formData.businessLocation.trim() || undefined : undefined,
+      businessIdea: isBizOwner ? formData.businessIdea.trim() || undefined : undefined,
       trainingRequired: formData.trainingRequired || undefined,
       mentorshipRequired: formData.mentorshipRequired || undefined,
       businessExpansion: formData.businessExpansion || undefined,
       customFields: Object.keys(customFieldValues).length > 0 ? customFieldValues : undefined,
+      assignedAgentId: assignedId,
+      assigned_agent_id: assignedId,
+      assignedAgentName: assignedName,
+      ...(isEditMode ? {} : { createdBy: user?.id, created_by: user?.id }),
     };
 
     if (isEditMode && editId) {
-      const result = updateCustomer(editId, payload);
+      const result = updateCustomer(editId, payload, { role: role || 'team_member', id: user?.id || '' });
       if (result.success) {
+        recordAuditLog({
+          action: 'customer_update',
+          entityType: 'customer',
+          entityId: editId,
+          details: { fullName: payload.fullName, role },
+        });
+
         // If follow-up scheduled during edit, save it
         if (scheduleFollowUp && followUpTaskTitle.trim() && followUpDueDate) {
           addFollowUp({
@@ -401,6 +540,12 @@ export const AddCustomerPage: React.FC = () => {
       const result = addCustomer(payload);
       if (result.success && result.customer) {
         const newCustomerId = result.customer.id;
+        recordAuditLog({
+          action: 'customer_create',
+          entityType: 'customer',
+          entityId: newCustomerId,
+          details: { fullName: payload.fullName, assignedAgentId: assignedId, role },
+        });
 
         // If follow-up scheduled, connect it with new customer ID
         if (scheduleFollowUp && followUpTaskTitle.trim() && followUpDueDate) {
@@ -452,6 +597,40 @@ export const AddCustomerPage: React.FC = () => {
               </h2>
               <p className="empty-state-text">
                 The customer record with ID <strong>{editId}</strong> could not be found.
+              </p>
+              <Button variant="primary" icon={<ArrowLeft size={16} />} onClick={handleCancel}>
+                Back to Customers
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (isUnauthorizedEdit) {
+    return (
+      <div>
+        <PageHeader
+          title="Access Restricted"
+          description="You do not have permission to edit this customer profile."
+          actions={
+            <Button variant="secondary" icon={<ArrowLeft size={16} />} onClick={handleCancel}>
+              Back to Customers
+            </Button>
+          }
+        />
+        <div style={{ maxWidth: '640px', margin: '2rem auto' }}>
+          <Card>
+            <div className="empty-state">
+              <div className="empty-state-icon" style={{ backgroundColor: '#fef2f2', color: '#ef4444' }}>
+                <AlertCircle size={32} />
+              </div>
+              <h2 className="empty-state-title" style={{ fontSize: '1.4rem' }}>
+                Access Restricted
+              </h2>
+              <p className="empty-state-text">
+                As a Team Member, you are only permitted to edit customer records that are assigned to you or created by you.
               </p>
               <Button variant="primary" icon={<ArrowLeft size={16} />} onClick={handleCancel}>
                 Back to Customers
@@ -727,6 +906,31 @@ export const AddCustomerPage: React.FC = () => {
                     onChange={handleChange}
                   />
                 </div>
+
+                {!isTeamMember && (
+                  <div className="form-group full-width">
+                    <label className="form-label" htmlFor="assignedAgentId">
+                      Assigned Team Member <span style={{ color: 'var(--text-muted)' }}>(Optional)</span>
+                    </label>
+                    <select
+                      id="assignedAgentId"
+                      name="assignedAgentId"
+                      className="form-select"
+                      value={formData.assignedAgentId}
+                      onChange={handleChange}
+                    >
+                      <option value="">Unassigned</option>
+                      {activeMembers.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name} ({member.role})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="form-helper">
+                      Assign this customer to a team member for dedicated follow-up and engagement.
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
             <CardFooter style={{ justifyContent: 'space-between' }}>
@@ -757,33 +961,52 @@ export const AddCustomerPage: React.FC = () => {
             <CardContent>
               <div className="form-grid">
                 <div className="form-group full-width">
-                  <label className="form-label" htmlFor="category">
+                  <label className="form-label" id="customerCategoryLabel">
                     Customer Category <span className="req">*</span>
                   </label>
-                  <select
-                    id="category"
-                    name="category"
-                    className={`form-select ${errors.category ? 'is-invalid' : ''}`}
-                    value={formData.category}
-                    onChange={handleChange}
-                    autoFocus
-                  >
-                    <option value="">Select Category</option>
-                    {dynamicCategories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.category && (
+                  <MultiSelectDropdown
+                    id="customerCategorySelect"
+                    options={dynamicCategories}
+                    selected={formData.categories}
+                    onChange={handleCategoriesChange}
+                    placeholder="Select customer category (multi-select)..."
+                    searchPlaceholder="Search categories..."
+                    error={errors.categories || errors.category}
+                    required
+                  />
+                  {errors.categories && (
                     <span className="form-error-msg" role="alert">
-                      <AlertCircle size={13} /> {errors.category}
+                      <AlertCircle size={13} /> {errors.categories}
                     </span>
                   )}
                 </div>
 
+                {/* Others/Other custom category input */}
+                {(formData.categories.includes('Others') || formData.categories.includes('Other')) && (
+                  <div className="form-group full-width">
+                    <label className="form-label" htmlFor="customCategory">
+                      Please Specify Customer Category <span className="req">*</span>
+                    </label>
+                    <input
+                      id="customCategory"
+                      name="customCategory"
+                      type="text"
+                      className={`form-input ${errors.customCategory ? 'is-invalid' : ''}`}
+                      placeholder="Please specify customer category..."
+                      value={formData.customCategory}
+                      onChange={handleChange}
+                      autoFocus
+                    />
+                    {errors.customCategory && (
+                      <span className="form-error-msg" role="alert">
+                        <AlertCircle size={13} /> {errors.customCategory}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Conditional Business / Enterprise Details */}
-                {isBusinessCategory(formData.category) ? (
+                {isBusinessOwnerSelected(formData.categories) ? (
                   <div
                     className="form-group full-width"
                     style={{
@@ -799,7 +1022,7 @@ export const AddCustomerPage: React.FC = () => {
                       <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-navy)', margin: 0 }}>
                         Enterprise & Business Information
                       </h4>
-                      <Badge variant="primary">Conditional: {formData.category}</Badge>
+                      <Badge variant="primary">Business Owner</Badge>
                     </div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
                       Capture specific enterprise data, products/services, and expansion ideas for business profiles.
@@ -822,24 +1045,43 @@ export const AddCustomerPage: React.FC = () => {
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label" htmlFor="businessCategory">
+                        <label className="form-label" id="businessCategoryLabel">
                           Business Category / Industry
                         </label>
-                        <select
-                          id="businessCategory"
-                          name="businessCategory"
-                          className="form-select"
-                          value={formData.businessCategory}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Industry</option>
-                          {BUSINESS_INDUSTRIES.map((ind) => (
-                            <option key={ind} value={ind}>
-                              {ind}
-                            </option>
-                          ))}
-                        </select>
+                        <MultiSelectDropdown
+                          id="businessCategorySelect"
+                          options={BUSINESS_INDUSTRIES}
+                          selected={formData.businessCategories}
+                          onChange={handleBusinessCategoriesChange}
+                          placeholder="Select industries (multi-select)..."
+                          searchPlaceholder="Search business industries..."
+                          error={errors.customBusinessCategory}
+                        />
                       </div>
+
+                      {/* Others/Other custom business industry input */}
+                      {(formData.businessCategories.includes('Others') || formData.businessCategories.includes('Other')) && (
+                        <div className="form-group full-width">
+                          <label className="form-label" htmlFor="customBusinessCategory">
+                            Please Specify Business Industry <span className="req">*</span>
+                          </label>
+                          <input
+                            id="customBusinessCategory"
+                            name="customBusinessCategory"
+                            type="text"
+                            className={`form-input ${errors.customBusinessCategory ? 'is-invalid' : ''}`}
+                            placeholder="Please specify business industry..."
+                            value={formData.customBusinessCategory}
+                            onChange={handleChange}
+                            autoFocus
+                          />
+                          {errors.customBusinessCategory && (
+                            <span className="form-error-msg" role="alert">
+                              <AlertCircle size={13} /> {errors.customBusinessCategory}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="form-group full-width">
                         <label className="form-label" htmlFor="businessServices">
@@ -887,7 +1129,7 @@ export const AddCustomerPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                ) : formData.category ? (
+                ) : formData.categories && formData.categories.length > 0 ? (
                   <div
                     className="form-group full-width"
                     style={{
@@ -898,7 +1140,7 @@ export const AddCustomerPage: React.FC = () => {
                     }}
                   >
                     <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                      Selected profile category (<strong>{formData.category}</strong>) does not require mandatory enterprise details.
+                      Selected profile categories ({formData.categories.join(', ')}) do not require mandatory enterprise details. Enterprise details are enabled when <strong>Business Owner</strong> is selected.
                     </span>
                   </div>
                 ) : null}
@@ -931,19 +1173,41 @@ export const AddCustomerPage: React.FC = () => {
                               placeholder={`Enter ${field.label.toLowerCase()}...`}
                             />
                           ) : field.type === 'select' && field.options ? (
-                            <select
-                              id={`cf_${field.id}`}
-                              className="form-select"
-                              value={customFieldValues[field.id] || ''}
-                              onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
-                            >
-                              <option value="">Select an option</option>
-                              {field.options.map((opt) => (
-                                <option key={opt} value={opt}>
-                                  {opt}
-                                </option>
-                              ))}
-                            </select>
+                            <div>
+                              <select
+                                id={`cf_${field.id}`}
+                                className="form-select"
+                                value={customFieldValues[field.id] || ''}
+                                onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                              >
+                                <option value="">Select an option</option>
+                                {field.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                              {(customFieldValues[field.id] === 'Others' || customFieldValues[field.id] === 'Other') && (
+                                <div style={{ marginTop: '0.5rem' }}>
+                                  <label className="form-label" htmlFor={`cf_${field.id}_other`}>
+                                    Please specify {field.label} <span className="req">*</span>
+                                  </label>
+                                  <input
+                                    id={`cf_${field.id}_other`}
+                                    type="text"
+                                    className="form-input"
+                                    value={customFieldValues[`${field.id}_other`] || ''}
+                                    onChange={(e) =>
+                                      setCustomFieldValues((prev) => ({
+                                        ...prev,
+                                        [`${field.id}_other`]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={`Please specify ${field.label.toLowerCase()}...`}
+                                  />
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             <input
                               id={`cf_${field.id}`}
@@ -1380,6 +1644,16 @@ export const AddCustomerPage: React.FC = () => {
                           {formData.location || 'Not provided'}
                         </span>
                       </div>
+                      {(formData.assignedAgentId || (isTeamMember && !isEditMode)) && (
+                        <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                          <span className="detail-label">Assigned Team Member</span>
+                          <span className="detail-value">
+                            {isTeamMember && !isEditMode
+                              ? `${user?.full_name} (Self-assigned)`
+                              : (activeMembers.find((m) => m.id === formData.assignedAgentId)?.name || 'Unassigned')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1393,11 +1667,24 @@ export const AddCustomerPage: React.FC = () => {
                         <span className="detail-label">Occupation</span>
                         <span className="detail-value">{formData.occupation}</span>
                       </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Category</span>
-                        <span className="detail-value">
-                          <Badge variant="primary">{formData.category}</Badge>
-                        </span>
+                      <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                        <span className="detail-label">Customer Categories</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.25rem' }}>
+                          {formData.categories && formData.categories.length > 0 ? (
+                            formData.categories.map((cat) => (
+                              <Badge key={cat} variant="primary">
+                                {cat}
+                                {(cat === 'Others' || cat === 'Other') && formData.customCategory && (
+                                  <span style={{ marginLeft: '0.35rem', opacity: 0.9 }}>
+                                    ({formData.customCategory})
+                                  </span>
+                                )}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge variant="primary">{formData.category}</Badge>
+                          )}
+                        </div>
                       </div>
                       {(formData.trainingRequired || formData.mentorshipRequired || formData.businessExpansion) && (
                         <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
@@ -1426,18 +1713,21 @@ export const AddCustomerPage: React.FC = () => {
                       {settings.customFields && settings.customFields.map((cf) => {
                         const val = customFieldValues[cf.id];
                         if (!val) return null;
+                        const otherVal = customFieldValues[`${cf.id}_other`];
                         return (
                           <div key={cf.id} className="detail-item">
                             <span className="detail-label">{cf.label}</span>
-                            <span className="detail-value">{val}</span>
+                            <span className="detail-value">
+                              {val} {otherVal ? `(${otherVal})` : ''}
+                            </span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Summary Box 3: Enterprise & Business Details (Conditional) */}
-                  {(formData.businessName || formData.businessCategory || formData.businessServices || formData.businessLocation || formData.businessIdea) && (
+                  {/* Summary Box 3: Enterprise & Business Details (Conditional: only for Business Owner) */}
+                  {formData.categories.includes('Business Owner') && (
                     <div className="detail-box">
                       <h4 style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
                         Enterprise & Business Information
@@ -1451,10 +1741,24 @@ export const AddCustomerPage: React.FC = () => {
                             </span>
                           </div>
                         )}
-                        {formData.businessCategory && (
-                          <div className="detail-item">
-                            <span className="detail-label">Industry Category</span>
-                            <span className="detail-value">{formData.businessCategory}</span>
+                        {(formData.businessCategories.length > 0 || formData.businessCategory) && (
+                          <div className="detail-item" style={{ gridColumn: '1 / -1' }}>
+                            <span className="detail-label">Industry Categories</span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.2rem' }}>
+                              {(formData.businessCategories.length > 0
+                                ? formData.businessCategories
+                                : formData.businessCategory.split(',').map((s) => s.trim()).filter(Boolean)
+                              ).map((ind) => (
+                                <Badge key={ind} variant="info">
+                                  {ind}
+                                  {(ind === 'Others' || ind === 'Other') && formData.customBusinessCategory && (
+                                    <span style={{ marginLeft: '0.35rem', opacity: 0.9 }}>
+                                      ({formData.customBusinessCategory})
+                                    </span>
+                                  )}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                         )}
                         {formData.businessServices && (

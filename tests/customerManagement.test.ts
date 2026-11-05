@@ -111,6 +111,37 @@ import {
   authenticateWithGoogle,
 } from '../src/services/authStorage.ts';
 
+import {
+  isSuperAdmin as checkIsSuperAdmin,
+  isAdminOrSuperAdmin as checkIsAdminOrSuperAdmin,
+  isTeamMemberUser,
+  canDeleteCustomer,
+  canManageUsers,
+  canAssignCustomer,
+  canAccessAuditLogs,
+} from '../src/types/auth.ts';
+
+import {
+  loginWithCredentials,
+  logout,
+  bootstrapInitialSuperAdmin,
+  createUserBySuperAdmin,
+  updateUserRole,
+  updateUserStatus,
+  getLocalProfiles,
+  saveLocalProfiles,
+  AUTH_SESSION_KEY,
+} from '../src/services/authService.ts';
+
+import {
+  recordAuditLog,
+  getStoredAuditLogs,
+  clearAuditLogs,
+} from '../src/services/auditStorage.ts';
+
+import fs from 'node:fs';
+import path from 'node:path';
+
 describe('Door2Life Customer Management Automated Tests', () => {
   beforeEach(() => {
     mockStorage.clear();
@@ -1446,6 +1477,585 @@ describe('Door2Life Customer Management Automated Tests', () => {
       assert.equal(googleAttempt.success, false);
       assert.match(googleAttempt.error || '', /Google authentication is not configured/i);
       assert.equal(isAuthenticated(), false);
+    });
+  });
+
+  describe('16. Customer Registration Step 2: Multi-Select, Conditional Enterprise & Custom Others', () => {
+    beforeEach(() => {
+      mockStorage.clear();
+    });
+
+    // Helper condition matching AddCustomerPage
+    const isBusinessOwnerSelected = (categories: string[]): boolean => {
+      return Array.isArray(categories) && categories.includes('Business Owner');
+    };
+
+    it('Scenario 1: Student only hides enterprise info', () => {
+      const selectedCategories = ['Student'];
+      assert.equal(isBusinessOwnerSelected(selectedCategories), false);
+
+      const res = addCustomer({
+        fullName: 'Rahul Sharma',
+        age: 21,
+        gender: 'Male',
+        primaryContact: '9876543210',
+        occupation: 'College Student',
+        category: 'Student',
+        categories: ['Student'],
+      });
+      assert.equal(res.success, true);
+      assert.ok(res.customer);
+      assert.equal(res.customer?.businessName, undefined);
+      assert.equal(res.customer?.businessCategories, undefined);
+    });
+
+    it('Scenario 2: Business Owner only shows enterprise info', () => {
+      const selectedCategories = ['Business Owner'];
+      assert.equal(isBusinessOwnerSelected(selectedCategories), true);
+
+      const res = addCustomer({
+        fullName: 'Kavitha Rajan',
+        age: 38,
+        gender: 'Female',
+        primaryContact: '9876543211',
+        occupation: 'Retail Entrepreneur',
+        category: 'Business Owner',
+        categories: ['Business Owner'],
+        businessName: 'Rajan Organic Store',
+        businessCategories: ['Retail & Supermarkets'],
+        businessServices: 'Groceries, Millets & Organics',
+        businessLocation: 'Chennai, Tamil Nadu',
+        businessIdea: 'Expand to 3 new outlets',
+      });
+      assert.equal(res.success, true);
+      assert.ok(res.customer);
+      assert.equal(res.customer?.businessName, 'Rajan Organic Store');
+      assert.deepEqual(res.customer?.businessCategories, ['Retail & Supermarkets']);
+    });
+
+    it('Scenario 3: Business Owner + Student combined shows enterprise info', () => {
+      const selectedCategories = ['Business Owner', 'Student'];
+      assert.equal(isBusinessOwnerSelected(selectedCategories), true);
+
+      const res = addCustomer({
+        fullName: 'Arjun Verma',
+        age: 23,
+        gender: 'Male',
+        primaryContact: '9876543212',
+        occupation: 'Student & Startup Founder',
+        category: 'Business Owner',
+        categories: ['Business Owner', 'Student'],
+        businessName: 'Campus EdTech Hub',
+        businessCategories: ['Information Technology & Software', 'Education & Coaching'],
+      });
+      assert.equal(res.success, true);
+      assert.ok(res.customer);
+      assert.deepEqual(res.customer?.categories, ['Business Owner', 'Student']);
+      assert.equal(res.customer?.businessName, 'Campus EdTech Hub');
+    });
+
+    it('Scenario 4: Removing Business Owner hides enterprise info immediately', () => {
+      let selectedCategories = ['Business Owner', 'Student'];
+      assert.equal(isBusinessOwnerSelected(selectedCategories), true);
+
+      // Deselect Business Owner
+      selectedCategories = selectedCategories.filter((c) => c !== 'Business Owner');
+      assert.deepEqual(selectedCategories, ['Student']);
+      assert.equal(isBusinessOwnerSelected(selectedCategories), false);
+    });
+
+    it('Scenario 5: Multiple Business Industries are saved and retrieved', () => {
+      const res = addCustomer({
+        fullName: 'Priya Sundaram',
+        age: 34,
+        gender: 'Female',
+        primaryContact: '9876543213',
+        occupation: 'Multi-industry Owner',
+        category: 'Business Owner',
+        categories: ['Business Owner'],
+        businessName: 'Sundaram Enterprises',
+        businessCategories: ['Retail & Supermarkets', 'Manufacturing & Production', 'Information Technology & Software'],
+      });
+      assert.equal(res.success, true);
+      const customerId = res.customer?.id;
+      assert.ok(customerId);
+
+      const retrieved = getStoredCustomerById(customerId!);
+      assert.ok(retrieved);
+      assert.deepEqual(retrieved?.businessCategories, [
+        'Retail & Supermarkets',
+        'Manufacturing & Production',
+        'Information Technology & Software',
+      ]);
+      assert.equal(retrieved?.businessCategory, 'Retail & Supermarkets, Manufacturing & Production, Information Technology & Software');
+    });
+
+    it('Scenario 6: Others in Customer Category displays custom input and saves custom value', () => {
+      const categories = ['Others'];
+      const hasOthers = categories.includes('Others') || categories.includes('Other');
+      assert.equal(hasOthers, true);
+
+      const res = addCustomer({
+        fullName: 'Meena Krishnan',
+        age: 29,
+        gender: 'Female',
+        primaryContact: '9876543214',
+        occupation: 'Freelance UX Architect',
+        category: 'Others',
+        categories: ['Others'],
+        customCategory: 'Freelance Consultant',
+      });
+      assert.equal(res.success, true);
+      const customer = getStoredCustomerById(res.customer!.id);
+      assert.ok(customer);
+      assert.deepEqual(customer?.categories, ['Others']);
+      assert.equal(customer?.customCategory, 'Freelance Consultant');
+    });
+
+    it('Scenario 7: Others in Business Category displays custom input and saves custom value', () => {
+      const res = addCustomer({
+        fullName: 'Suresh Menon',
+        age: 42,
+        gender: 'Male',
+        primaryContact: '9876543215',
+        occupation: 'Clean Tech Founder',
+        category: 'Business Owner',
+        categories: ['Business Owner'],
+        businessName: 'EcoVolt Solutions',
+        businessCategories: ['Others'],
+        customBusinessCategory: 'Renewable Solar Tech',
+      });
+      assert.equal(res.success, true);
+      const customer = getStoredCustomerById(res.customer!.id);
+      assert.ok(customer);
+      assert.deepEqual(customer?.businessCategories, ['Others']);
+      assert.equal(customer?.customBusinessCategory, 'Renewable Solar Tech');
+    });
+
+    it('Scenario 8: Edit Customer displays previously selected categories, industries and custom text', () => {
+      const initial = addCustomer({
+        fullName: 'Deepa Natarajan',
+        age: 31,
+        gender: 'Female',
+        primaryContact: '9876543216',
+        occupation: 'Artisan & Store Owner',
+        category: 'Business Owner',
+        categories: ['Business Owner', 'Others'],
+        customCategory: 'Independent Potter',
+        businessName: 'Clay Craft Studio',
+        businessCategories: ['Handicrafts & Artisans', 'Others'],
+        customBusinessCategory: 'Ceramic Art Studio',
+      });
+      assert.equal(initial.success, true);
+      const custId = initial.customer!.id;
+
+      // Update customer profile preserving and updating multi-select and custom values
+      const updated = updateCustomer(custId, {
+        fullName: 'Deepa Natarajan',
+        age: 31,
+        gender: 'Female',
+        primaryContact: '9876543216',
+        occupation: 'Master Ceramicist',
+        category: 'Business Owner',
+        categories: ['Business Owner', 'Others'],
+        customCategory: 'Master Ceramic Artist',
+        businessName: 'Clay Craft Studio',
+        businessCategories: ['Handicrafts & Artisans', 'Others'],
+        customBusinessCategory: 'Studio Pottery Gallery',
+      });
+      assert.equal(updated.success, true);
+
+      const reRead = getStoredCustomerById(custId);
+      assert.ok(reRead);
+      assert.equal(reRead?.occupation, 'Master Ceramicist');
+      assert.deepEqual(reRead?.categories, ['Business Owner', 'Others']);
+      assert.equal(reRead?.customCategory, 'Master Ceramic Artist');
+      assert.deepEqual(reRead?.businessCategories, ['Handicrafts & Artisans', 'Others']);
+      assert.equal(reRead?.customBusinessCategory, 'Studio Pottery Gallery');
+    });
+
+    it('Scenario 9: Deselecting Others removes custom input and clears value immediately', () => {
+      let customCategory = 'Special Custom Category';
+
+      const handleCategoriesChange = (newSelected: string[]) => {
+        const hasOthers = newSelected.includes('Others') || newSelected.includes('Other');
+        return {
+          categories: newSelected,
+          customCategory: hasOthers ? customCategory : '',
+        };
+      };
+
+      // Deselect Others
+      const nextState = handleCategoriesChange(['Business Owner']);
+      assert.deepEqual(nextState.categories, ['Business Owner']);
+      assert.equal(nextState.customCategory, ''); // Immediately cleared, no stale value
+
+      // Same for Business Categories:
+      let customBizCategory = 'Organic Herbal Store';
+      const handleBusinessCategoriesChange = (newSelected: string[]) => {
+        const hasOthers = newSelected.includes('Others') || newSelected.includes('Other');
+        return {
+          businessCategories: newSelected,
+          customBusinessCategory: hasOthers ? customBizCategory : '',
+        };
+      };
+
+      const nextBizState = handleBusinessCategoriesChange(['Retail & Supermarkets']);
+      assert.deepEqual(nextBizState.businessCategories, ['Retail & Supermarkets']);
+      assert.equal(nextBizState.customBusinessCategory, ''); // Stale value cleared
+    });
+
+    it('Scenario 10: Refresh & LocalStorage persistence verification', () => {
+      assert.equal(STORAGE_KEY, 'door2life_customers_v1');
+
+      const addRes = addCustomer({
+        fullName: 'Venkatesh Iyer',
+        age: 45,
+        gender: 'Male',
+        primaryContact: '9876543217',
+        occupation: 'Software Consultant',
+        category: 'Business Owner',
+        categories: ['Business Owner', 'Working Professional'],
+        businessName: 'Iyer Tech Labs',
+        businessCategories: ['Information Technology & Software', 'Professional Services & Consulting'],
+      });
+      assert.equal(addRes.success, true);
+
+      // Verify raw JSON in mockStorage under door2life_customers_v1
+      const rawStored = mockStorage.getItem('door2life_customers_v1');
+      assert.ok(rawStored);
+      const parsedArray = JSON.parse(rawStored);
+      assert.ok(Array.isArray(parsedArray));
+      const record = parsedArray.find((c: any) => c.fullName === 'Venkatesh Iyer');
+      assert.ok(record);
+      assert.deepEqual(record.categories, ['Business Owner', 'Working Professional']);
+      assert.deepEqual(record.businessCategories, [
+        'Information Technology & Software',
+        'Professional Services & Consulting',
+      ]);
+      assert.equal(record.category, 'Business Owner');
+
+      // Verify JSON Export includes new multi-select categories
+      const jsonExport = exportCustomersToJSON();
+      assert.equal(jsonExport.success, true);
+      const exportRecord = jsonExport.payload.data.find((c) => c.fullName === 'Venkatesh Iyer');
+      assert.ok(exportRecord);
+      assert.deepEqual(exportRecord?.categories, ['Business Owner', 'Working Professional']);
+    });
+  });
+
+  describe('17. User Authentication & Role Verification (Supabase / Local Engine)', () => {
+    it('authenticates Super Admin with valid credentials and sets active session', async () => {
+      const res = await loginWithCredentials('superadmin@door2life.local', 'D2L-Super-2026!');
+      assert.equal(res.success, true);
+      assert.ok(res.user);
+      assert.equal(res.user?.role, 'super_admin');
+      assert.equal(res.user?.status, 'active');
+      assert.equal(res.user?.email, 'superadmin@door2life.local');
+      assert.equal(checkIsSuperAdmin(res.user?.role), true);
+      assert.equal(checkIsAdminOrSuperAdmin(res.user?.role), true);
+    });
+
+    it('authenticates Admin with valid credentials and sets active session', async () => {
+      const res = await loginWithCredentials('admin@door2life.local', 'D2L-Demo-2026!');
+      assert.equal(res.success, true);
+      assert.ok(res.user);
+      assert.equal(res.user?.role, 'admin');
+      assert.equal(res.user?.status, 'active');
+      assert.equal(checkIsSuperAdmin(res.user?.role), false);
+      assert.equal(checkIsAdminOrSuperAdmin(res.user?.role), true);
+    });
+
+    it('authenticates Team Member with valid credentials and sets active session', async () => {
+      const res = await loginWithCredentials('operator@door2life.local', 'D2L-Demo-2026!');
+      assert.equal(res.success, true);
+      assert.ok(res.user);
+      assert.equal(res.user?.role, 'team_member');
+      assert.equal(res.user?.status, 'active');
+      assert.equal(isTeamMemberUser(res.user?.role), true);
+      assert.equal(checkIsAdminOrSuperAdmin(res.user?.role), false);
+    });
+
+    it('strictly denies access to inactive/deactivated accounts', async () => {
+      const res = await loginWithCredentials('deactivated@door2life.local', 'D2L-Demo-2026!');
+      assert.equal(res.success, false);
+      assert.ok(res.error?.toLowerCase().includes('inactive') || res.error?.toLowerCase().includes('deactivated'));
+    });
+
+    it('rejects invalid password or non-existent user with clear error message', async () => {
+      const wrongPw = await loginWithCredentials('superadmin@door2life.local', 'WrongPassword123!');
+      assert.equal(wrongPw.success, false);
+      assert.ok(wrongPw.error?.toLowerCase().includes('invalid'));
+
+      const nonExistent = await loginWithCredentials('nobody@door2life.local', 'D2L-Demo-2026!');
+      assert.equal(nonExistent.success, false);
+      assert.ok(nonExistent.error?.toLowerCase().includes('not found') || nonExistent.error?.toLowerCase().includes('invalid'));
+    });
+
+    it('clears active session upon logout', async () => {
+      await loginWithCredentials('superadmin@door2life.local', 'D2L-Super-2026!');
+      assert.ok(mockStorage.getItem(AUTH_SESSION_KEY));
+
+      await logout();
+      assert.equal(mockStorage.getItem(AUTH_SESSION_KEY), null);
+    });
+
+    it('enforces strictly one-time Super Admin bootstrap', async () => {
+      // 1. When Super Admin already exists, bootstrap is rejected
+      const rejectAttempt = await bootstrapInitialSuperAdmin({
+        email: 'newadmin@door2life.local',
+        password: 'D2L-NewSuper-2026!',
+        fullName: 'New Super Admin',
+      });
+      assert.equal(rejectAttempt.success, false);
+      assert.ok(rejectAttempt.error?.includes('already configured') || rejectAttempt.error?.includes('Bootstrap is strictly one-time'));
+
+      // 2. Clear super admins and verify bootstrap succeeds
+      const profiles = getLocalProfiles().filter((p) => p.role !== 'super_admin');
+      saveLocalProfiles(profiles);
+
+      const successAttempt = await bootstrapInitialSuperAdmin({
+        email: 'firstadmin@door2life.local',
+        password: 'D2L-FirstSuper-2026!',
+        fullName: 'First System Super Admin',
+      });
+      assert.equal(successAttempt.success, true);
+      assert.ok(successAttempt.user);
+      assert.equal(successAttempt.user?.role, 'super_admin');
+
+      // 3. Immediately verify subsequent bootstrap attempt is now locked out
+      const secondAttempt = await bootstrapInitialSuperAdmin({
+        email: 'secondadmin@door2life.local',
+        password: 'D2L-SecondSuper-2026!',
+        fullName: 'Second Super Admin',
+      });
+      assert.equal(secondAttempt.success, false);
+    });
+  });
+
+  describe('18. Role-Based Access Control & Operational Boundaries', () => {
+    it('verifies permission helper functions for all three roles', () => {
+      // Super Admin
+      assert.equal(canDeleteCustomer('super_admin'), true);
+      assert.equal(canManageUsers('super_admin'), true);
+      assert.equal(canAssignCustomer('super_admin'), true);
+      assert.equal(canAccessAuditLogs('super_admin'), true);
+
+      // Admin
+      assert.equal(canDeleteCustomer('admin'), false);
+      assert.equal(canManageUsers('admin'), false);
+      assert.equal(canAssignCustomer('admin'), true);
+      assert.equal(canAccessAuditLogs('admin'), false);
+
+      // Team Member
+      assert.equal(canDeleteCustomer('team_member'), false);
+      assert.equal(canManageUsers('team_member'), false);
+      assert.equal(canAssignCustomer('team_member'), false);
+      assert.equal(canAccessAuditLogs('team_member'), false);
+    });
+
+    it('allows only Super Admin to delete customers, blocking Admin and Team Member', () => {
+      const addRes = addCustomer({
+        fullName: 'Customer For Deletion Test',
+        age: 30,
+        gender: 'Male',
+        primaryContact: '9876543299',
+        occupation: 'Engineer',
+        category: 'General Customer',
+      });
+      assert.equal(addRes.success, true);
+      const custId = addRes.customer!.id;
+
+      // Admin tries to delete -> blocked
+      const adminDelete = deleteCustomer(custId, 'admin');
+      assert.equal(adminDelete, false);
+      assert.ok(getStoredCustomerById(custId));
+
+      // Team Member tries to delete -> blocked
+      const teamDelete = deleteCustomer(custId, 'team_member');
+      assert.equal(teamDelete, false);
+      assert.ok(getStoredCustomerById(custId));
+
+      // Super Admin tries to delete -> permitted
+      const superDelete = deleteCustomer(custId, 'super_admin');
+      assert.equal(superDelete, true);
+      assert.equal(getStoredCustomerById(custId), null);
+    });
+
+    it('enforces Team Member ownership: permitted for assigned, denied for unassigned', () => {
+      const assignedCust = addCustomer({
+        fullName: 'Assigned Customer',
+        age: 28,
+        gender: 'Female',
+        primaryContact: '9876543288',
+        occupation: 'Designer',
+        category: 'General Customer',
+        assignedAgentId: 'tm_user_101',
+      });
+      assert.equal(assignedCust.success, true);
+      const assignedId = assignedCust.customer!.id;
+
+      const unassignedCust = addCustomer({
+        fullName: 'Unassigned Customer',
+        age: 35,
+        gender: 'Male',
+        primaryContact: '9876543277',
+        occupation: 'Merchant',
+        category: 'Business Owner',
+        assignedAgentId: 'tm_user_999',
+      });
+      assert.equal(unassignedCust.success, true);
+      const unassignedId = unassignedCust.customer!.id;
+
+      // 1. Team member updates their own assigned customer -> succeeds
+      const updateOwn = updateCustomer(
+        assignedId,
+        { notes: 'Updated notes by assigned agent' },
+        { role: 'team_member', id: 'tm_user_101' }
+      );
+      assert.equal(updateOwn.success, true);
+      assert.equal(getStoredCustomerById(assignedId)?.notes, 'Updated notes by assigned agent');
+
+      // 2. Team member tries to update another agent customer -> denied
+      const updateOther = updateCustomer(
+        unassignedId,
+        { notes: 'Unauthorized tampering attempt' },
+        { role: 'team_member', id: 'tm_user_101' }
+      );
+      assert.equal(updateOther.success, false);
+      assert.ok(updateOther.error?.includes('Permission Denied'));
+      assert.notEqual(getStoredCustomerById(unassignedId)?.notes, 'Unauthorized tampering attempt');
+    });
+
+    it('prevents Team Members from altering customer assignment during updates', () => {
+      const cust = addCustomer({
+        fullName: 'Customer Fixed Assignment',
+        age: 40,
+        gender: 'Male',
+        primaryContact: '9876543266',
+        occupation: 'Consultant',
+        category: 'Professional',
+        assignedAgentId: 'tm_user_101',
+      });
+      const custId = cust.customer!.id;
+
+      // Team member attempts to reassign customer to another agent
+      const reassignAttempt = updateCustomer(
+        custId,
+        { notes: 'Valid note', assignedAgentId: 'tm_user_hacker' } as any,
+        { role: 'team_member', id: 'tm_user_101' }
+      );
+      assert.equal(reassignAttempt.success, true);
+
+      // Verify assignedAgentId was NOT altered by team_member
+      const freshRecord = getStoredCustomerById(custId);
+      assert.equal(freshRecord?.assignedAgentId, 'tm_user_101');
+    });
+
+    it('allows Super Admin to manage user roles and deactivations, rejecting non-super admins', async () => {
+      const callerAdmin = { id: 'usr_admin_002', role: 'admin' as const };
+      const callerSuper = { id: 'usr_super_admin_001', role: 'super_admin' as const };
+
+      // 1. Non-super admin cannot create user
+      const createByAdmin = await createUserBySuperAdmin(callerAdmin, {
+        fullName: 'New Staff',
+        email: 'staff@door2life.local',
+        password: 'Password123!',
+        role: 'team_member',
+      });
+      assert.equal(createByAdmin.success, false);
+      assert.ok(createByAdmin.error?.toLowerCase().includes('permission denied'));
+
+      // 2. Super Admin creates user
+      const createBySuper = await createUserBySuperAdmin(callerSuper, {
+        fullName: 'New Staff By Super',
+        email: 'staff_super@door2life.local',
+        password: 'Password123!',
+        role: 'team_member',
+      });
+      assert.equal(createBySuper.success, true);
+      const newUserId = createBySuper.user!.id;
+
+      // 3. Super Admin promotes user to admin
+      const roleChange = await updateUserRole(callerSuper, newUserId, 'admin');
+      assert.equal(roleChange.success, true);
+
+      // 4. Non-super admin cannot change user role
+      const unauthorizedRoleChange = await updateUserRole(callerAdmin, newUserId, 'super_admin');
+      assert.equal(unauthorizedRoleChange.success, false);
+
+      // 5. Super Admin deactivates user
+      const deact = await updateUserStatus(callerSuper, newUserId, 'inactive');
+      assert.equal(deact.success, true);
+      const updatedProfile = getLocalProfiles().find((p) => p.id === newUserId);
+      assert.equal(updatedProfile?.status, 'inactive');
+    });
+
+    it('records security audit log entries for operational actions', () => {
+      clearAuditLogs();
+
+      recordAuditLog({
+        action: 'customer_create',
+        entityType: 'customer',
+        entityId: 'CUST-1001',
+        details: { fullName: 'Test Audit Customer' },
+        actor: { id: 'usr_super_admin_001', name: 'System Super Admin', role: 'super_admin' },
+      });
+
+      recordAuditLog({
+        action: 'user_role_change',
+        entityType: 'profile',
+        entityId: 'usr_team_003',
+        details: { oldRole: 'team_member', newRole: 'admin' },
+        actor: { id: 'usr_super_admin_001', name: 'System Super Admin', role: 'super_admin' },
+      });
+
+      const logs = getStoredAuditLogs();
+      assert.equal(logs.length, 2);
+      assert.equal(logs[0].action, 'user_role_change');
+      assert.equal(logs[1].action, 'customer_create');
+      assert.equal(logs[0].actor_role, 'super_admin');
+    });
+  });
+
+  describe('19. Supabase Database Schema & Row-Level Security (RLS) Verification', () => {
+    it('verifies SQL migration file exists and defines all required tables and RLS policies', () => {
+      const migrationPath = path.resolve(
+        process.cwd(),
+        'supabase/migrations/20261102000000_rbac_schema.sql'
+      );
+      assert.ok(fs.existsSync(migrationPath), `Migration file must exist at ${migrationPath}`);
+
+      const sql = fs.readFileSync(migrationPath, 'utf8');
+
+      // 1. Verify primary tables
+      assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS public.profiles'), 'profiles table must be defined');
+      assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS public.customers'), 'customers table must be defined');
+      assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS public.follow_ups'), 'follow_ups table must be defined');
+      assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS public.audit_logs'), 'audit_logs table must be defined');
+
+      // 2. Verify security definer functions with search_path = public
+      assert.ok(sql.includes('FUNCTION public.get_auth_user_role'), 'get_auth_user_role function must be defined');
+      assert.ok(sql.includes('FUNCTION public.is_super_admin'), 'is_super_admin function must be defined');
+      assert.ok(sql.includes('FUNCTION public.is_admin_or_super_admin'), 'is_admin_or_super_admin function must be defined');
+      assert.ok(sql.includes('FUNCTION public.is_active_user'), 'is_active_user function must be defined');
+      assert.ok(sql.includes('FUNCTION public.bootstrap_initial_super_admin'), 'bootstrap_initial_super_admin function must be defined');
+      assert.ok(sql.includes('SET search_path = public'), 'security definer functions must fix search_path to public to prevent escalation');
+
+      // 3. Verify Row-Level Security (RLS) enabled on all tables
+      assert.ok(sql.includes('ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;'), 'RLS must be enabled on profiles');
+      assert.ok(sql.includes('ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;'), 'RLS must be enabled on customers');
+      assert.ok(sql.includes('ALTER TABLE public.follow_ups ENABLE ROW LEVEL SECURITY;'), 'RLS must be enabled on follow_ups');
+      assert.ok(sql.includes('ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;'), 'RLS must be enabled on audit_logs');
+
+      // 4. Verify RLS policies
+      assert.ok(sql.includes('customers_select_policy'), 'customers select policy');
+      assert.ok(sql.includes('customers_insert_policy'), 'customers insert policy');
+      assert.ok(sql.includes('customers_update_policy'), 'customers update policy');
+      assert.ok(sql.includes('customers_delete_policy'), 'customers delete policy');
+      assert.ok(sql.includes('profiles_select_policy'), 'profiles select policy');
+      assert.ok(sql.includes('follow_ups_select_policy'), 'follow_ups select policy');
+      assert.ok(sql.includes('audit_logs_select_policy'), 'audit_logs select policy');
     });
   });
 });

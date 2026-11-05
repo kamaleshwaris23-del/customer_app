@@ -11,6 +11,7 @@ import { TeamMembersPage } from './pages/TeamMembersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { LoginPage } from './pages/LoginPage';
+import { AuditLogsPage } from './pages/AuditLogsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
@@ -38,9 +39,33 @@ export function App() {
           <Route path="customers/:id" element={<CustomerProfilePage />} />
           <Route path="add-customer" element={<AddCustomerPage />} />
           <Route path="follow-ups" element={<FollowUpsPage />} />
-          <Route path="import-export" element={<ImportExportPage />} />
-          <Route path="team" element={<TeamMembersPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
+
+          {/* Role-Restricted Modules */}
+          <Route
+            path="team"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin', 'admin']}>
+                <TeamMembersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="import-export"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <ImportExportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <ProtectedRoute allowedRoles={['super_admin']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* 404 Catch-all within application */}
           <Route path="*" element={<NotFoundPage />} />

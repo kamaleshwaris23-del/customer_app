@@ -1,3 +1,4 @@
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -7,14 +8,14 @@ import {
   ArrowLeftRight,
   ShieldCheck,
   Settings,
+  History,
   X,
   Sparkles,
   LogOut,
 } from 'lucide-react';
 import { useCustomers } from '../../services/customerStorage';
 import { useFollowUps } from '../../services/followUpStorage';
-import { useDemoRole } from '../../services/roleStorage';
-import { logoutLocalSession } from '../../services/authStorage';
+import { useAuthSession } from '../../services/authService';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,52 +26,121 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { totalCount } = useCustomers();
   const { pendingCount } = useFollowUps();
-  const { isAdmin } = useDemoRole();
+  const { isSuperAdmin, isAdmin, logout } = useAuthSession();
 
-  const mainNavItems = [
-    {
-      label: 'Dashboard',
-      path: '/dashboard',
-      icon: <LayoutDashboard size={19} />,
-    },
-    {
-      label: 'Customers',
-      path: '/customers',
-      icon: <Users size={19} />,
-      badge: totalCount > 0 ? String(totalCount) : undefined,
-    },
-    {
-      label: 'Add Customer',
-      path: '/add-customer',
-      icon: <UserPlus size={19} />,
-    },
-    {
-      label: 'Follow-ups',
-      path: '/follow-ups',
-      icon: <Clock size={19} />,
-      badge: pendingCount > 0 ? String(pendingCount) : undefined,
-    },
-    {
-      label: 'Import / Export',
-      path: '/import-export',
-      icon: <ArrowLeftRight size={19} />,
-    },
-  ];
+  let mainNavItems: { label: string; path: string; icon: React.ReactNode; badge?: string }[] = [];
+  let adminNavItems: { label: string; path: string; icon: React.ReactNode; badge?: string }[] = [];
 
-  const adminNavItems = [
-    {
-      label: 'Team Members',
-      path: '/team',
-      icon: <ShieldCheck size={19} />,
-      badge: !isAdmin ? 'Admin' : undefined,
-    },
-    {
-      label: 'Settings',
-      path: '/settings',
-      icon: <Settings size={19} />,
-      badge: !isAdmin ? 'Admin' : undefined,
-    },
-  ];
+  if (isSuperAdmin) {
+    mainNavItems = [
+      {
+        label: 'Dashboard',
+        path: '/dashboard',
+        icon: <LayoutDashboard size={19} />,
+      },
+      {
+        label: 'Customers',
+        path: '/customers',
+        icon: <Users size={19} />,
+        badge: totalCount > 0 ? String(totalCount) : undefined,
+      },
+      {
+        label: 'Add Customer',
+        path: '/add-customer',
+        icon: <UserPlus size={19} />,
+      },
+      {
+        label: 'Follow-ups',
+        path: '/follow-ups',
+        icon: <Clock size={19} />,
+        badge: pendingCount > 0 ? String(pendingCount) : undefined,
+      },
+    ];
+    adminNavItems = [
+      {
+        label: 'Team Management',
+        path: '/team',
+        icon: <ShieldCheck size={19} />,
+      },
+      {
+        label: 'Import / Export',
+        path: '/import-export',
+        icon: <ArrowLeftRight size={19} />,
+      },
+      {
+        label: 'Settings',
+        path: '/settings',
+        icon: <Settings size={19} />,
+      },
+      {
+        label: 'Audit Logs',
+        path: '/audit-logs',
+        icon: <History size={19} />,
+      },
+    ];
+  } else if (isAdmin) {
+    mainNavItems = [
+      {
+        label: 'Dashboard',
+        path: '/dashboard',
+        icon: <LayoutDashboard size={19} />,
+      },
+      {
+        label: 'Customers',
+        path: '/customers',
+        icon: <Users size={19} />,
+        badge: totalCount > 0 ? String(totalCount) : undefined,
+      },
+      {
+        label: 'Add Customer',
+        path: '/add-customer',
+        icon: <UserPlus size={19} />,
+      },
+      {
+        label: 'Follow-ups',
+        path: '/follow-ups',
+        icon: <Clock size={19} />,
+        badge: pendingCount > 0 ? String(pendingCount) : undefined,
+      },
+    ];
+    adminNavItems = [
+      {
+        label: 'Team Overview',
+        path: '/team',
+        icon: <ShieldCheck size={19} />,
+      },
+    ];
+  } else {
+    // Team Member
+    mainNavItems = [
+      {
+        label: 'My Dashboard',
+        path: '/dashboard',
+        icon: <LayoutDashboard size={19} />,
+      },
+      {
+        label: 'My Customers',
+        path: '/customers',
+        icon: <Users size={19} />,
+      },
+      {
+        label: 'Add Customer',
+        path: '/add-customer',
+        icon: <UserPlus size={19} />,
+      },
+      {
+        label: 'My Follow-ups',
+        path: '/follow-ups',
+        icon: <Clock size={19} />,
+      },
+      {
+        label: 'My Activity',
+        path: '/audit-logs',
+        icon: <History size={19} />,
+      },
+    ];
+    adminNavItems = [];
+  }
 
   return (
     <aside className={`app-sidebar ${isOpen ? 'mobile-open' : ''}`}>
@@ -101,7 +171,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {/* Nav List */}
       <div className="sidebar-nav-container">
         <div>
-          <div className="nav-section-title">Main Menu</div>
+          <div className="nav-section-title">
+            {isSuperAdmin ? 'Main Menu' : isAdmin ? 'Main Menu' : 'My Workspace'}
+          </div>
           <ul className="nav-list">
             {mainNavItems.map((item) => (
               <li key={item.path}>
@@ -122,38 +194,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </ul>
         </div>
 
-        <div>
-          <div className="nav-section-title">Administration</div>
-          <ul className="nav-list">
-            {adminNavItems.map((item) => (
-              <li key={item.path}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `nav-item-link ${isActive ? 'active' : ''}`
-                  }
-                  onClick={onClose}
-                >
-                  <span className="nav-item-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {adminNavItems.length > 0 && (
+          <div>
+            <div className="nav-section-title">Administration</div>
+            <ul className="nav-list">
+              {adminNavItems.map((item) => (
+                <li key={item.path}>
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `nav-item-link ${isActive ? 'active' : ''}`
+                    }
+                    onClick={onClose}
+                  >
+                    <span className="nav-item-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
         <button
           type="button"
-          onClick={() => {
-            logoutLocalSession();
+          onClick={async () => {
+            await logout();
             onClose();
             navigate('/login');
           }}
           className="sidebar-logout-btn"
-          title="Sign out of local session"
+          title="Sign out of your account"
         >
           <LogOut size={15} />
           <span>Sign Out</span>

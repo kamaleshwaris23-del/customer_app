@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sparkles, Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound } from 'lucide-react';
+import { Sparkles, Mail, Lock, Eye, EyeOff, AlertCircle, KeyRound, Shield } from 'lucide-react';
+import { loginWithCredentials } from '../services/authService';
 import {
-  authenticateWithCredentials,
   authenticateWithGoogle,
   DEMO_ADMIN_CREDENTIALS,
+  SUPER_ADMIN_CREDENTIALS,
 } from '../services/authStorage';
 
 export const LoginPage: React.FC = () => {
@@ -21,6 +22,13 @@ export const LoginPage: React.FC = () => {
   const destination =
     (location.state as { from?: { pathname?: string } })?.from?.pathname || '/dashboard';
 
+  useEffect(() => {
+    const passedError = (location.state as { error?: string })?.error;
+    if (passedError) {
+      setErrorMessage(passedError);
+    }
+  }, [location.state]);
+
   const handleGoogleSignIn = () => {
     setErrorMessage(null);
     const result = authenticateWithGoogle();
@@ -34,13 +42,25 @@ export const LoginPage: React.FC = () => {
     navigate(destination, { replace: true });
   };
 
-  const handleFillDemoAdmin = () => {
+  const handleFillSuperAdmin = () => {
+    setEmail(SUPER_ADMIN_CREDENTIALS.email);
+    setPassword(SUPER_ADMIN_CREDENTIALS.password);
+    setErrorMessage(null);
+  };
+
+  const handleFillAdmin = () => {
     setEmail(DEMO_ADMIN_CREDENTIALS.email);
     setPassword(DEMO_ADMIN_CREDENTIALS.password);
     setErrorMessage(null);
   };
 
-  const handleEmailPasswordSubmit = (e: React.FormEvent) => {
+  const handleFillTeamMember = () => {
+    setEmail('operator@door2life.local');
+    setPassword('D2L-Demo-2026!');
+    setErrorMessage(null);
+  };
+
+  const handleEmailPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -52,7 +72,7 @@ export const LoginPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const result = authenticateWithCredentials(trimmedEmail, password);
+      const result = await loginWithCredentials(trimmedEmail, password);
       if (!result.success) {
         setErrorMessage(
           result.error || 'Invalid email or password. Please check your credentials.'
@@ -61,7 +81,7 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      // Successful genuine authentication -> navigate to Dashboard
+      // Successful genuine authentication -> navigate to destination
       navigate(destination, { replace: true });
     } catch {
       setErrorMessage('An unexpected authentication error occurred. Please try again.');
@@ -141,7 +161,7 @@ export const LoginPage: React.FC = () => {
                 id="login-email"
                 type="email"
                 className="form-input input-padded-left"
-                placeholder={DEMO_ADMIN_CREDENTIALS.email}
+                placeholder="name@door2life.local"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -197,34 +217,45 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Local Demo Admin Helper (Development & Testing Only) */}
+        {/* Local RBAC Quick Access Helper for Testing */}
         <div className="login-demo-box">
           <div className="login-demo-header">
-            <span className="login-demo-pill">Local Demo Mode</span>
-            <span className="login-demo-tag">Testing & Dev Only</span>
+            <span className="login-demo-pill">RBAC Demo Accounts</span>
+            <span className="login-demo-tag">Testing & Verification</span>
           </div>
           <p className="login-demo-desc">
-            Local offline testing account. Not intended as production authentication.
+            Test the three authenticated roles with individual role-restricted permissions.
           </p>
-          <div className="login-demo-credentials-grid">
-            <div className="login-demo-row">
-              <span className="login-demo-label">Demo Admin:</span>
-              <code className="login-demo-code">{DEMO_ADMIN_CREDENTIALS.email}</code>
-            </div>
-            <div className="login-demo-row">
-              <span className="login-demo-label">Password:</span>
-              <code className="login-demo-code">{DEMO_ADMIN_CREDENTIALS.password}</code>
-            </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
+            <button
+              type="button"
+              className="login-demo-fill-btn"
+              onClick={handleFillSuperAdmin}
+              title="Fill Super Admin Credentials"
+            >
+              <Shield size={14} color="#2563eb" />
+              <span>Super Admin (Full Platform Control)</span>
+            </button>
+            <button
+              type="button"
+              className="login-demo-fill-btn"
+              onClick={handleFillAdmin}
+              title="Fill Admin Credentials"
+            >
+              <KeyRound size={14} color="#d97706" />
+              <span>Admin (Operational Management)</span>
+            </button>
+            <button
+              type="button"
+              className="login-demo-fill-btn"
+              onClick={handleFillTeamMember}
+              title="Fill Team Member Credentials"
+            >
+              <KeyRound size={14} color="#059669" />
+              <span>Team Member (Assigned Work Only)</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="login-demo-fill-btn"
-            onClick={handleFillDemoAdmin}
-            title="Populate email and password fields with demo credentials"
-          >
-            <KeyRound size={14} />
-            <span>Fill Demo Admin Credentials</span>
-          </button>
         </div>
 
         {/* Subtle, Professional Footer */}

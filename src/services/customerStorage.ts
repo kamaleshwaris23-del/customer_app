@@ -221,10 +221,26 @@ export function addCustomer(
   }
 
   const now = new Date().toISOString();
+  const categories = Array.isArray(input.categories) && input.categories.length > 0
+    ? input.categories
+    : (input.category ? [input.category] : ['General Customer' as const]);
+  const primaryCategory = input.category || categories[0];
+
+  const businessCategories = Array.isArray(input.businessCategories) && input.businessCategories.length > 0
+    ? input.businessCategories
+    : (input.businessCategory ? input.businessCategory.split(',').map((s) => s.trim()).filter(Boolean) : undefined);
+  const businessCategory = input.businessCategory || (businessCategories && businessCategories.length > 0 ? businessCategories.join(', ') : undefined);
+
   const newCustomer: Customer = {
     ...input,
     id: targetId,
     primaryContact: cleanContact,
+    category: primaryCategory,
+    categories,
+    customCategory: input.customCategory?.trim() || undefined,
+    businessCategory,
+    businessCategories,
+    customBusinessCategory: input.customBusinessCategory?.trim() || undefined,
     createdAt: now,
     updatedAt: now,
   };
@@ -244,13 +260,36 @@ export function addCustomer(
  */
 export function updateCustomer(
   id: string,
-  updates: Partial<Omit<Customer, 'id' | 'createdAt'>>
+  updates: Partial<Omit<Customer, 'id' | 'createdAt'>>,
+  caller?: { role: import('../types/auth').UserRole; id: string }
 ): { success: boolean; customer?: Customer; error?: string } {
   const customers = getStoredCustomers();
   const index = customers.findIndex((c) => c.id === id);
 
   if (index === -1) {
     return { success: false, error: `Customer with ID ${id} was not found.` };
+  }
+
+  const existing = customers[index];
+
+  // RBAC checks if caller provided
+  if (caller && caller.role === 'team_member') {
+    const isOwnerOrAssigned =
+      existing.assignedAgentId === caller.id ||
+      existing.assigned_agent_id === caller.id ||
+      existing.createdBy === caller.id ||
+      existing.created_by === caller.id;
+
+    if (!isOwnerOrAssigned) {
+      return {
+        success: false,
+        error: 'Permission Denied: Team Members can only edit their assigned customer records.',
+      };
+    }
+
+    // Team Member cannot change customer assignment
+    delete updates.assignedAgentId;
+    delete updates.assigned_agent_id;
   }
 
   if (updates.primaryContact) {
@@ -271,10 +310,27 @@ export function updateCustomer(
     updates.primaryContact = cleanContact;
   }
 
-  const existing = customers[index];
+  let updatedCategories = updates.categories !== undefined
+    ? updates.categories
+    : (updates.category ? [updates.category] : existing.categories);
+  let updatedCategory = updates.category !== undefined
+    ? updates.category
+    : (updatedCategories && updatedCategories.length > 0 ? updatedCategories[0] : existing.category);
+
+  let updatedBizCats = updates.businessCategories !== undefined
+    ? updates.businessCategories
+    : (updates.businessCategory ? updates.businessCategory.split(',').map((s) => s.trim()).filter(Boolean) : existing.businessCategories);
+  let updatedBizCat = updates.businessCategory !== undefined
+    ? updates.businessCategory
+    : (updatedBizCats && updatedBizCats.length > 0 ? updatedBizCats.join(', ') : existing.businessCategory);
+
   const updatedCustomer: Customer = {
     ...existing,
     ...updates,
+    category: updatedCategory,
+    categories: updatedCategories,
+    businessCategory: updatedBizCat,
+    businessCategories: updatedBizCats,
     updatedAt: new Date().toISOString(),
   };
 
@@ -290,8 +346,12 @@ export function updateCustomer(
 
 /**
  * Delete a customer record by ID.
+ * Strictly checks caller role if provided: Only Super Admin can delete customer records.
  */
-export function deleteCustomer(id: string): boolean {
+export function deleteCustomer(id: string, callerRole?: import('../types/auth').UserRole): boolean {
+  if (callerRole && callerRole !== 'super_admin') {
+    return false;
+  }
   const customers = getStoredCustomers();
   const filtered = customers.filter((c) => c.id !== id);
   if (filtered.length === customers.length) {
@@ -390,12 +450,12 @@ export function exportCustomersToCSV(): {
     escapeCSVValue(c.primaryContact),
     escapeCSVValue(c.email || ''),
     escapeCSVValue(c.occupation),
-    escapeCSVValue(c.category),
+    escapeCSVValue(c.categories && c.categories.length > 0 ? c.categories.join(', ') : c.category),
     escapeCSVValue(c.location || ''),
     escapeCSVValue(c.interests || ''),
     escapeCSVValue(c.notes || ''),
     escapeCSVValue(c.businessName || ''),
-    escapeCSVValue(c.businessCategory || ''),
+    escapeCSVValue(c.businessCategories && c.businessCategories.length > 0 ? c.businessCategories.join(', ') : (c.businessCategory || '')),
     escapeCSVValue(c.businessServices || ''),
     escapeCSVValue(c.businessLocation || ''),
     escapeCSVValue(c.businessIdea || ''),
@@ -622,14 +682,18 @@ export function validateCustomerCSVImport(
 
 const VALID_CATEGORIES: import('../types/customer').CustomerCategory[] = [
   'Business Owner',
+  'Student',
+  'Job Seeker',
+  'Employee / Working Professional',
+  'Homemaker',
   'Aspiring Entrepreneur',
   'Entrepreneur',
-  'Student',
   'Working Professional',
   'Professional',
   'Self-employed',
   'Investor',
   'General Customer',
+  'Others',
   'Other',
 ];
 
@@ -792,11 +856,27 @@ export function validateCustomerImport(
 
     // 6. Category
     const allowedCategories = getValidCategories();
-    if (
-      typeof rec.category !== 'string' ||
-      !rec.category.trim() ||
-      !allowedCategories.includes(rec.category.trim())
+    let validCatList: import('../types/customer').CustomerCategory[] = [];
+    if (Array.isArray(rec.categories) && rec.categories.length > 0) {
+      const hasValid = rec.categories.some((c) => typeof c === 'string' && allowedCategories.includes(c.trim()));
+      if (!hasValid) {
+        invalidRecords.push({
+          index,
+          data: item,
+          error: `Categories must include one of: ${allowedCategories.join(', ')}.`,
+        });
+        return;
+      }
+      validCatList = rec.categories
+        .filter((c) => typeof c === 'string' && c.trim())
+        .map((c) => String(c).trim() as import('../types/customer').CustomerCategory);
+    } else if (
+      typeof rec.category === 'string' &&
+      rec.category.trim() &&
+      allowedCategories.includes(rec.category.trim())
     ) {
+      validCatList = [rec.category.trim() as import('../types/customer').CustomerCategory];
+    } else {
       invalidRecords.push({
         index,
         data: item,
@@ -824,6 +904,13 @@ export function validateCustomerImport(
       seenFileIds.add(targetId);
     }
 
+    const primaryCategory = (validCatList.length > 0 ? validCatList[0] : rec.category) as import('../types/customer').CustomerCategory;
+    const bizCategories = Array.isArray(rec.businessCategories) && rec.businessCategories.length > 0
+      ? rec.businessCategories.map((b: unknown) => String(b).trim())
+      : (typeof rec.businessCategory === 'string' && rec.businessCategory.trim()
+          ? rec.businessCategory.split(',').map((s: string) => s.trim()).filter(Boolean)
+          : undefined);
+
     const now = new Date().toISOString();
     const validCustomer: Customer = {
       id: targetId || 'TEMP', // Temp if absent, assigned later
@@ -834,11 +921,17 @@ export function validateCustomerImport(
       email: typeof rec.email === 'string' && rec.email.trim() ? rec.email.trim() : undefined,
       location: typeof rec.location === 'string' && rec.location.trim() ? rec.location.trim() : undefined,
       occupation: rec.occupation.trim(),
-      category: rec.category as import('../types/customer').CustomerCategory,
+      category: primaryCategory,
+      categories: validCatList,
+      customCategory: typeof rec.customCategory === 'string' && rec.customCategory.trim() ? rec.customCategory.trim() : undefined,
       interests: typeof rec.interests === 'string' && rec.interests.trim() ? rec.interests.trim() : undefined,
       notes: typeof rec.notes === 'string' && rec.notes.trim() ? rec.notes.trim() : undefined,
       businessName: typeof rec.businessName === 'string' && rec.businessName.trim() ? rec.businessName.trim() : undefined,
-      businessCategory: typeof rec.businessCategory === 'string' && rec.businessCategory.trim() ? rec.businessCategory.trim() : undefined,
+      businessCategory: typeof rec.businessCategory === 'string' && rec.businessCategory.trim()
+        ? rec.businessCategory.trim()
+        : (bizCategories && bizCategories.length > 0 ? bizCategories.join(', ') : undefined),
+      businessCategories: bizCategories,
+      customBusinessCategory: typeof rec.customBusinessCategory === 'string' && rec.customBusinessCategory.trim() ? rec.customBusinessCategory.trim() : undefined,
       businessServices: typeof rec.businessServices === 'string' && rec.businessServices.trim() ? rec.businessServices.trim() : undefined,
       businessLocation: typeof rec.businessLocation === 'string' && rec.businessLocation.trim() ? rec.businessLocation.trim() : undefined,
       businessIdea: typeof rec.businessIdea === 'string' && rec.businessIdea.trim() ? rec.businessIdea.trim() : undefined,
